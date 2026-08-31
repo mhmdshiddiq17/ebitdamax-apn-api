@@ -1,0 +1,47 @@
+host: localhost:4000
+info:
+  contact: {}
+  description: REST API aplikasi EBITDA Max APN (refactor Go + Next.js). Semua endpoint
+    bisnis berada di bawah /api/v1.
+  title: EBITDA Max APN API
+  version: "1.0"
+paths:
+  /api/v1/ping:
+    get:
+      description: Cek apakah API hidup
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Ping
+      tags:
+      - Health
+  /healthz:
+    get:
+      description: Status koneksi database, redis, dan minio
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - Health
+schemes:
+- http
+swagger: "2.0"

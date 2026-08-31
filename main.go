@@ -1,27 +1,34 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
+	"log"
 
 	"agrinaspangan/ebitda-api/config"
+	"agrinaspangan/ebitda-api/internal/cache"
+	"agrinaspangan/ebitda-api/internal/database"
+	"agrinaspangan/ebitda-api/internal/server"
+	"agrinaspangan/ebitda-api/internal/storage"
 )
 
+// @title         EBITDA Max APN API
+// @version       1.0
+// @description   REST API aplikasi EBITDA Max APN (refactor Go + Next.js). Semua endpoint bisnis berada di bawah /api/v1.
+// @host          localhost:4000
+// @schemes       http
 func main() {
-	//inisialiasai Gin
-	router := gin.Default()
-
-	//memuat environment variables
 	config.LoadEnv()
 
-	//membuat route dengan method GET
-	router.GET("/", func(c *gin.Context) {
+	deps := server.Deps{
+		DB:    database.Connect(),
+		Redis: cache.Connect(),
+		Minio: storage.Connect(),
+	}
 
-		//return response JSON
-		c.JSON(200, gin.H{
-			"message": "Hello World!",
-		})
-	})
+	router := server.NewRouter(deps)
 
-	//mulai server dengan port dari environment variable
-	router.Run(":" + config.GetEnv("APP_PORT", "3000"))
+	port := config.GetEnv("APP_PORT", "4000")
+	log.Printf("api server listening on :%s", port)
+	if err := router.Run(":" + port); err != nil {
+		log.Fatalf("failed to start server: %v", err)
+	}
 }
