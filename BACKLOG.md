@@ -3,7 +3,9 @@
 **Scope: role `manager` (Kepala Toko/KDKMP) + `manager-wilayah` (regional) + `superadmin`.**
 Modul APN corporate & workflow KDKMP Gerai (`ebitda_kdkmp`) **di luar scope**.
 
-Status: `todo` / `in_progress` / `review` / `done` / `blocked` · Prioritas: **P0** wajib, **P1** penting, **P2** opsional.
+Status: `todo` / `in_progress` / `review` / `done` / `blocked` / `skip` / `hold` · Prioritas: **P0** wajib, **P1** penting, **P2** opsional.
+
+> **Kebijakan:** setiap arahan user untuk **hold** atau **skip** ditandai di kolom Status (+alasan singkat) dan dicatat di `SPRINT.md`.
 
 Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 
@@ -14,8 +16,8 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | E0 | Foundation & Infrastruktur | S0 | done |
 | E1 | Auth Core (session, login, reset) | S1 | done |
 | E2 | Auth Lanjutan (2FA, passkeys, notifikasi, onboarding) | S2 | done* |
-| E3 | Master Data Manager (users, roles, kategori, task) | S3 | in_progress |
-| E4 | Task Management (dashboard, report, dokumen) | S4 | todo |
+| E3 | Master Data Manager (users, roles, kategori, task) | S3 | done* |
+| E4 | Task Management (dashboard, report, dokumen) | S4 | done |
 | E5 | Dashboard KDKMP (metrik, matriks, seleksi, skor) | S5 | todo |
 | E6 | Monitoring Superadmin (admin KDKMP, konsolidasi, announcement) | S6 | todo |
 | E7 | SDM & Monitoring Nasional (import, sarpras, peta) | S7 | todo |
@@ -66,19 +68,19 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 |----|-------|-----------|--------|
 | S3-1 | Users KDKMP CRUD + regional assignments + SK document (MinIO) | P0 | done |
 | S3-2 | Roles KDKMP CRUD (backend + halaman web) | P0 | done |
-| S3-3 | Task Categories CRUD | P0 | todo |
-| S3-4 | Tasks CRUD (multi-role, period, BMC, cost JSONB, additional fields) | P0 | todo |
-| S3-5 | Verifikasi rebuild DB dari nol (goose + seed) | P1 | todo |
+| S3-3 | Task Categories CRUD (backend + halaman web) | P0 | done |
+| S3-4 | Tasks CRUD (multi-role, period, BMC, cost JSONB, additional fields) | P0 | done |
+| S3-5 | Verifikasi rebuild DB dari nol (goose + seed) | P1 | skip (disetujui; rebuild tetap dicakup saat S9 cutover) |
 
 ## Sprint 4 — Task Management
 
 | ID | Story | Prioritas | Status |
 |----|-------|-----------|--------|
-| S4-1 | Task dashboard harian (task per role, period key) | P0 | todo |
-| S4-2 | Start/finish report + additional fields | P0 | todo |
-| S4-3 | Upload foto + dokumen ke MinIO (fase start/finish) | P0 | todo |
-| S4-4 | Preview/download dokumen & foto | P0 | todo |
-| S4-5 | Riwayat task selesai (14 hari) | P0 | todo |
+| S4-1 | Task dashboard harian (task per role, period key) | P0 | done |
+| S4-2 | Start/finish report + additional fields | P0 | done |
+| S4-3 | Upload foto + dokumen ke MinIO (fase start/finish) | P0 | done |
+| S4-4 | Preview/download dokumen & foto | P0 | done |
+| S4-5 | Riwayat task selesai (14 hari) | P0 | done |
 
 ## Sprint 5 — Dashboard KDKMP
 

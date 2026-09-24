@@ -11,25 +11,26 @@ import (
 
 // Make mengubah teks menjadi slug (huruf kecil, pemisah "-").
 func Make(value string) string {
+	return MakeSeparator(value, "-")
+}
+
+// MakeSeparator mengubah teks menjadi slug dengan pemisah kustom.
+func MakeSeparator(value string, separator string) string {
 	var builder strings.Builder
-	lastDash := false
+	lastSeparator := false
 
 	for _, r := range strings.ToLower(value) {
 		switch {
 		case unicode.IsLetter(r) || unicode.IsDigit(r):
 			builder.WriteRune(r)
-			lastDash = false
-		case !lastDash:
-			builder.WriteRune('-')
-			lastDash = true
+			lastSeparator = false
+		case !lastSeparator:
+			builder.WriteString(separator)
+			lastSeparator = true
 		}
 	}
 
-	result := strings.Trim(builder.String(), "-")
-	if result == "" {
-		return "item"
-	}
-	return result
+	return strings.Trim(builder.String(), separator)
 }
 
 // Unique mencari slug yang belum dipakai pada table; bila bentrok menambahkan

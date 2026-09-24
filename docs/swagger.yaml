@@ -1,4 +1,32 @@
 definitions:
+  server.additionalFieldPayload:
+    properties:
+      id:
+        type: integer
+      input_type:
+        type: string
+      is_required:
+        type: boolean
+      label:
+        type: string
+      options:
+        items:
+          type: string
+        type: array
+      show_when:
+        type: string
+    type: object
+  server.costPayload:
+    properties:
+      machine:
+        type: integer
+      man:
+        type: integer
+      material:
+        type: integer
+      method:
+        type: integer
+    type: object
   server.loginRequest:
     properties:
       email:
@@ -33,6 +61,52 @@ definitions:
         type: string
       name:
         type: string
+    type: object
+  server.taskCategoryPayload:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  server.taskPayload:
+    properties:
+      additional_fields:
+        items:
+          $ref: '#/definitions/server.additionalFieldPayload'
+        type: array
+      bmc_status:
+        type: string
+      description:
+        type: string
+      execution_time:
+        type: string
+      fixed_cost:
+        $ref: '#/definitions/server.costPayload'
+      is_active:
+        type: boolean
+      is_mandatory:
+        type: boolean
+      lower_time_threshold_minutes:
+        type: integer
+      name:
+        type: string
+      period:
+        type: string
+      role_ids:
+        items:
+          type: integer
+        type: array
+      sort_order:
+        type: integer
+      task_category_id:
+        type: integer
+      time_require:
+        type: integer
+      upper_time_threshold_minutes:
+        type: integer
+      variable_cost:
+        $ref: '#/definitions/server.costPayload'
     type: object
   server.twoFactorCodeRequest:
     properties:
@@ -735,6 +809,846 @@ paths:
       summary: Ubah role
       tags:
       - Roles
+  /api/v1/task-categories:
+    get:
+      description: Daftar kategori task dengan pencarian, urutan, paginasi, dan jumlah
+        task.
+      parameters:
+      - description: Cari nama/slug/deskripsi
+        in: query
+        name: search
+        type: string
+      - description: 'Urutkan: name|created_at'
+        in: query
+        name: sort
+        type: string
+      - description: asc|desc
+        in: query
+        name: direction
+        type: string
+      - description: Halaman
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Daftar kategori task
+      tags:
+      - Task Categories
+    post:
+      consumes:
+      - application/json
+      description: Membuat kategori task (slug otomatis unik dari nama).
+      parameters:
+      - description: Data kategori
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.taskCategoryPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Tambah kategori task
+      tags:
+      - Task Categories
+  /api/v1/task-categories/{id}:
+    delete:
+      description: Menghapus kategori; ditolak bila masih dipakai task.
+      parameters:
+      - description: ID kategori
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Hapus kategori task
+      tags:
+      - Task Categories
+    put:
+      consumes:
+      - application/json
+      description: Mengubah nama dan deskripsi kategori; slug ikut diperbarui.
+      parameters:
+      - description: ID kategori
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Data kategori
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.taskCategoryPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Ubah kategori task
+      tags:
+      - Task Categories
+  /api/v1/task-dashboard:
+    get:
+      description: Daftar task aktif sesuai role pengguna beserta status laporan pada
+        periode berjalan, ringkasan, dan (untuk manager KDKMP) ringkasan kehadiran
+        operasional.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Dashboard task harian
+      tags:
+      - Task Dashboard
+  /api/v1/task-dashboard/completed:
+    get:
+      description: Riwayat laporan task selesai 14 hari terakhir, dikelompokkan per
+        tanggal dengan ringkasan harian (tepat waktu, terlambat, tidak dikerjakan).
+      parameters:
+      - description: Halaman (per 15 hari)
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Riwayat task selesai
+      tags:
+      - Task Dashboard
+  /api/v1/task-reports/{id}/additional-fields/{valueId}/download:
+    get:
+      description: Mengunduh file yang diunggah pada field tambahan laporan task.
+      parameters:
+      - description: ID laporan
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID nilai field
+        in: path
+        name: valueId
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Unduh file field tambahan
+      tags:
+      - Task Reports
+  /api/v1/task-reports/{id}/additional-fields/{valueId}/preview:
+    get:
+      description: Menampilkan file yang diunggah pada field tambahan laporan task.
+      parameters:
+      - description: ID laporan
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID nilai field
+        in: path
+        name: valueId
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Pratinjau file field tambahan
+      tags:
+      - Task Reports
+  /api/v1/task-reports/{id}/documents/{phase}/{index}/download:
+    get:
+      description: Mengunduh dokumen laporan task (fase start/finish).
+      parameters:
+      - description: ID laporan
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: start|finish
+        in: path
+        name: phase
+        required: true
+        type: string
+      - description: Indeks dokumen
+        in: path
+        name: index
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Unduh dokumen laporan task
+      tags:
+      - Task Reports
+  /api/v1/task-reports/{id}/documents/{phase}/{index}/preview:
+    get:
+      description: Menampilkan dokumen laporan task (fase start/finish) secara inline.
+      parameters:
+      - description: ID laporan
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: start|finish
+        in: path
+        name: phase
+        required: true
+        type: string
+      - description: Indeks dokumen
+        in: path
+        name: index
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Pratinjau dokumen laporan task
+      tags:
+      - Task Reports
+  /api/v1/task-reports/{id}/photos/{phase}/download:
+    get:
+      description: Mengunduh foto mulai/selesai task.
+      parameters:
+      - description: ID laporan
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: start|finish
+        in: path
+        name: phase
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Unduh foto laporan task
+      tags:
+      - Task Reports
+  /api/v1/task-reports/{id}/photos/{phase}/preview:
+    get:
+      description: Menampilkan foto mulai/selesai task secara inline.
+      parameters:
+      - description: ID laporan
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: start|finish
+        in: path
+        name: phase
+        required: true
+        type: string
+      produces:
+      - image/jpeg
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Pratinjau foto laporan task
+      tags:
+      - Task Reports
+  /api/v1/tasks:
+    get:
+      description: Daftar task dengan pencarian, filter kategori/role/status, urutan,
+        dan paginasi.
+      parameters:
+      - description: Cari nama/deskripsi/kategori/role
+        in: query
+        name: search
+        type: string
+      - description: Filter kategori
+        in: query
+        name: task_category_id
+        type: integer
+      - description: Filter role
+        in: query
+        name: role_id
+        type: integer
+      - description: active|inactive|all
+        in: query
+        name: status
+        type: string
+      - description: 'Urutkan: sort_order|name|execution_time|time_require|created_at'
+        in: query
+        name: sort
+        type: string
+      - description: asc|desc
+        in: query
+        name: direction
+        type: string
+      - description: Halaman
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Daftar task
+      tags:
+      - Tasks
+    post:
+      consumes:
+      - application/json
+      description: Membuat task dengan role, biaya fixed/variable, dan field tambahan
+        dinamis.
+      parameters:
+      - description: Data task
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.taskPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Tambah task
+      tags:
+      - Tasks
+  /api/v1/tasks/{id}:
+    delete:
+      description: Menghapus task; ditolak bila sudah memiliki laporan.
+      parameters:
+      - description: ID task
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Hapus task
+      tags:
+      - Tasks
+    put:
+      consumes:
+      - application/json
+      description: Mengubah task beserta role, biaya, dan field tambahan (field yang
+        dihapus akan dihilangkan).
+      parameters:
+      - description: ID task
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Data task
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.taskPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Ubah task
+      tags:
+      - Tasks
+  /api/v1/tasks/{id}/finish:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Menyelesaikan task: unggah foto selesai (wajib), dokumen (opsional),
+        dan isi field tambahan fase selesai.'
+      parameters:
+      - description: ID task
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Foto selesai (maks 3 MB)
+        in: formData
+        name: finished_photo
+        required: true
+        type: file
+      - collectionFormat: csv
+        description: Dokumen pendukung (maks 10 file, 10 MB/file)
+        in: formData
+        items:
+          type: file
+        name: documents
+        type: array
+      - description: JSON nilai field tambahan
+        in: formData
+        name: values
+        type: string
+      - description: File field tambahan dengan key value_files[field_name]
+        in: formData
+        name: value_files
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Selesaikan task
+      tags:
+      - Task Reports
+  /api/v1/tasks/{id}/start:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Memulai task: unggah foto (wajib), dokumen (opsional), isi field
+        tambahan fase mulai, dan alokasi anggota (manager KDKMP).'
+      parameters:
+      - description: ID task
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Foto mulai (maks 3 MB)
+        in: formData
+        name: started_photo
+        required: true
+        type: file
+      - collectionFormat: csv
+        description: Dokumen pendukung (maks 10 file, 10 MB/file)
+        in: formData
+        items:
+          type: file
+        name: documents
+        type: array
+      - description: 'JSON nilai field tambahan: {\'
+        in: formData
+        name: values
+        type: string
+      - description: File field tambahan dengan key value_files[field_name]
+        in: formData
+        name: value_files
+        type: file
+      - description: JSON alokasi anggota (manager KDKMP)
+        in: formData
+        name: member_allocations
+        type: string
+      - description: true bila manager mengerjakan sendiri
+        in: formData
+        name: manager_self_assigned
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Mulai task
+      tags:
+      - Task Reports
   /api/v1/two-factor:
     delete:
       consumes:

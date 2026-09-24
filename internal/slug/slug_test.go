@@ -8,12 +8,18 @@ func TestMake(t *testing.T) {
 		"  Kepala Toko / Gerai": "kepala-toko-gerai",
 		"Admin  KDKMP":          "admin-kdkmp",
 		"EBITDA_Max":            "ebitda-max",
-		"---":                   "item",
+		"---":                   "",
 	}
 
 	for input, expected := range cases {
 		if got := Make(input); got != expected {
 			t.Fatalf("Make(%q) = %q, expected %q", input, got, expected)
 		}
+	}
+}
+
+func TestMakeSeparator(t *testing.T) {
+	if got := MakeSeparator("Total Biaya Operasional", "_"); got != "total_biaya_operasional" {
+		t.Fatalf("MakeSeparator underscore = %q", got)
 	}
 }

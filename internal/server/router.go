@@ -11,11 +11,13 @@ import (
 	"gorm.io/gorm"
 
 	"agrinaspangan/ebitda-api/config"
+	"agrinaspangan/ebitda-api/internal/kdkmp"
 	"agrinaspangan/ebitda-api/internal/middleware"
 	"agrinaspangan/ebitda-api/internal/models"
 	"agrinaspangan/ebitda-api/internal/passkey"
 	"agrinaspangan/ebitda-api/internal/session"
 	"agrinaspangan/ebitda-api/internal/storage"
+	"agrinaspangan/ebitda-api/internal/taskreport"
 	"agrinaspangan/ebitda-api/internal/twofactor"
 
 	_ "agrinaspangan/ebitda-api/docs"
@@ -30,6 +32,9 @@ type Deps struct {
 	Session       *session.Manager
 	TwoFactor     *twofactor.Service
 	Passkey       *passkey.Service
+	Selection     *kdkmp.SelectionService
+	Allocation    *kdkmp.AllocationService
+	TaskReports   *taskreport.DocumentService
 	SessionCookie string
 	SessionTTL    time.Duration
 	SessionSecure bool
@@ -80,6 +85,25 @@ func NewRouter(deps Deps) *gin.Engine {
 			protected.DELETE("/passkeys/:id", DeletePasskeyHandler)
 			protected.POST("/users/complete-onboarding", CompleteOnboardingHandler)
 			protected.GET("/users/:id/manager-sk-document", PreviewManagerSKDocumentHandler)
+
+			taskDashboard := protected.Group("")
+			taskDashboard.Use(middleware.RequireLevels(
+				models.RoleLevelStaff,
+				models.RoleLevelManager,
+				models.RoleLevelSuperadmin,
+			))
+			{
+				taskDashboard.GET("/task-dashboard", TaskDashboardHandler)
+				taskDashboard.GET("/task-dashboard/completed", TaskHistoryHandler)
+				taskDashboard.POST("/tasks/:id/start", StartTaskReportHandler)
+				taskDashboard.POST("/tasks/:id/finish", FinishTaskReportHandler)
+				taskDashboard.GET("/task-reports/:id/documents/:phase/:index/preview", PreviewTaskReportDocumentHandler)
+				taskDashboard.GET("/task-reports/:id/documents/:phase/:index/download", DownloadTaskReportDocumentHandler)
+				taskDashboard.GET("/task-reports/:id/photos/:phase/preview", PreviewTaskReportPhotoHandler)
+				taskDashboard.GET("/task-reports/:id/photos/:phase/download", DownloadTaskReportPhotoHandler)
+				taskDashboard.GET("/task-reports/:id/additional-fields/:valueId/preview", PreviewTaskReportAdditionalFieldHandler)
+				taskDashboard.GET("/task-reports/:id/additional-fields/:valueId/download", DownloadTaskReportAdditionalFieldHandler)
+			}
 		}
 
 		admin := protected.Group("")
@@ -98,6 +122,16 @@ func NewRouter(deps Deps) *gin.Engine {
 
 			admin.GET("/region-options", RegionOptionsHandler)
 			admin.GET("/kdkmp-options", KdkmpOptionsHandler)
+
+			admin.GET("/task-categories", ListTaskCategoriesHandler)
+			admin.POST("/task-categories", CreateTaskCategoryHandler)
+			admin.PUT("/task-categories/:id", UpdateTaskCategoryHandler)
+			admin.DELETE("/task-categories/:id", DeleteTaskCategoryHandler)
+
+			admin.GET("/tasks", ListTasksHandler)
+			admin.POST("/tasks", CreateTaskHandler)
+			admin.PUT("/tasks/:id", UpdateTaskHandler)
+			admin.DELETE("/tasks/:id", DeleteTaskHandler)
 		}
 	}
 

@@ -9,10 +9,12 @@ import (
 	"agrinaspangan/ebitda-api/internal/cache"
 	"agrinaspangan/ebitda-api/internal/crypto"
 	"agrinaspangan/ebitda-api/internal/database"
+	"agrinaspangan/ebitda-api/internal/kdkmp"
 	"agrinaspangan/ebitda-api/internal/passkey"
 	"agrinaspangan/ebitda-api/internal/server"
 	"agrinaspangan/ebitda-api/internal/session"
 	"agrinaspangan/ebitda-api/internal/storage"
+	"agrinaspangan/ebitda-api/internal/taskreport"
 	"agrinaspangan/ebitda-api/internal/twofactor"
 )
 
@@ -57,6 +59,9 @@ func main() {
 		Session:       sessionManager,
 		TwoFactor:     twofactor.NewService(db, sessionManager, appKey, "EBITDA Max APN"),
 		Passkey:       passkeyService,
+		Selection:     kdkmp.NewSelectionService(db),
+		Allocation:    kdkmp.NewAllocationService(db),
+		TaskReports:   taskreport.NewDocumentService(files),
 		SessionCookie: sessionCookie,
 		SessionTTL:    sessionTTL,
 		SessionSecure: sessionSecure,

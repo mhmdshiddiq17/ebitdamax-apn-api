@@ -133,9 +133,9 @@ Durasi sprint: **2 minggu** · Metode: agile · Scope: `manager` + `manager-wila
 **Status per package:**
 - [x] **Pkg 1:** Roles CRUD — backend (list/create/update/delete + guard) & halaman web (tabel, cari, urut, paginasi, dialog form, konfirmasi hapus)
 - [x] **Pkg 2:** Users KDKMP CRUD + regional assignment + upload/preview SK (MinIO)
-- [ ] **Pkg 3:** Task Categories CRUD
-- [ ] **Pkg 4:** Tasks CRUD (multi-role, period, BMC, cost JSONB, additional fields)
-- [ ] **Pkg 5:** Verifikasi rebuild DB + E2E
+- [x] **Pkg 3:** Task Categories CRUD (backend + halaman web)
+- [x] **Pkg 4:** Tasks CRUD (multi-role, period, BMC, cost JSONB, additional fields)
+- [ ] **Pkg 5:** Verifikasi rebuild DB + E2E — **SKIP** (arahan user; rebuild tetap dicakup saat S9 cutover)
 
 **Catatan teknis Pkg 1:**
 - Endpoint superadmin-only (`RequireLevels(superadmin)`): `GET/POST /roles`, `PUT/DELETE /roles/{id}`; list filter domain (default `kdkmp`), search, sort whitelist (name/level/created_at), paginasi 15
@@ -151,16 +151,67 @@ Durasi sprint: **2 minggu** · Metode: agile · Scope: `manager` + `manager-wila
 - Halaman `/users`: tabel + filter role + pencarian + paginasi, dialog form dengan editor cakupan cascading (provinsi → kabupaten → kecamatan dari `/region-options`), unggah/pratinjau SK dari baris tabel (FormData), hapus dengan konfirmasi; `apiFetch` diperluas untuk `FormData`
 - Catatan: kolom `lark_open_id` ada di migrasi Laravel yang lebih baru (SSO Lark) — belum ada di schema kita; dibahas saat S8 (SSO) / S9 (migrasi data)
 
-**Review Sprint 3:** (isi saat review)
-**Retro Sprint 3:** (isi saat retro)
+**Catatan teknis Pkg 3:**
+- Endpoint superadmin: `GET/POST /task-categories`, `PUT/DELETE /task-categories/{id}`; list search (nama/slug/deskripsi), sort (name/created_at), paginasi 15, `tasks_count` via subquery
+- Nama unik case-insensitive, slug otomatis unik (`kategori-ui`, `kategori-ui-2`); guard hapus: dipakai task → 409
+- Halaman `/task-categories`: tabel + pencarian + urutan + paginasi + dialog form (nama + deskripsi) + konfirmasi hapus; menu sidebar "Kategori Tugas" aktif, proxy `/task-categories`
+- Komponen shadcn baru: `textarea`
+- E2E API (10 skenario: guard, CRUD, validasi, slug, tasks_count, guard 409) + E2E Playwright UI (create/edit/search/delete) — semua lolos
+
+**Catatan teknis Pkg 4:**
+- Tipe custom GORM: `CostBreakdown` (JSONB, parsing lenient angka/bool, `_configured` ditulis **boolean** agar kompatibel dua arah dengan aplikasi lama), `StringList` (options JSONB), `ClockTime` (kolom `time`, dukung scan `pgtype.Time`/`time.Time`/string)
+- Endpoint superadmin: `GET/POST /tasks`, `PUT/DELETE /tasks/{id}`; list filter search (nama/deskripsi/kategori/role), kategori, role, status (active/inactive/all), sort whitelist (sort_order/name/execution_time/time_require/created_at), paginasi 15
+- Validasi mirror app lama: kategori & role valid (role unik, min 1), `sort_order` unik (min 1), estimasi ≥1 menit, ambang waktu harus berpasangan & bawah ≤ atas, periode/BMC/tipe input/show_when dari enum, fixed & variable cost wajib lengkap (4 komponen ≥ 0), label field wajib ≤255
+- Sinkronisasi: pivot `task_roles` di-replace; field tambahan di-upsert per `id` dan yang tidak dikirim dihapus; `field_name` slug unik per task (`jumlah_pelanggan`, `catatan_2`); `options` hanya untuk select/radio/checkbox (kosong → null); guard hapus: sudah ada laporan → 409
+- Halaman `/tasks`: tabel (urut, task+kategori+BMC, role, periode, waktu, biaya, status), filter kategori/role/status + pencarian + urutan + paginasi; dialog form besar (multi-role toggle, biaya 4+4 komponen dengan total, editor field dinamis dengan opsi per baris); util `formatRupiah` di `src/lib/formatters.ts`
+- E2E API (16 validasi + CRUD + filter + guard) & E2E Playwright UI (create lengkap dengan field dinamis → edit prefilled → pencarian → hapus) — semua lolos
+
+**Review Sprint 3 (✅ goal tercapai):**
+- Master data lengkap: Roles CRUD, Users KDKMP (+regional assignment + SK via MinIO), Task Categories, Tasks (multi-role/BMC/biaya/field dinamis).
+- Verifikasi: E2E API (~50 skenario) + E2E Playwright UI untuk keempat halaman.
+- Pkg 5 (rebuild DB) di-skip atas arahan user → dicatat sebagai risiko kecil; verifikasi rebuild dicakup saat S9 cutover.
+
+**Retro Sprint 3:**
+- 🟢 Keep: pola paket (backend → E2E API → UI → E2E Playwright) konsisten dan menemukan bug dini (created_at NULL, GORM JSONB type, `_configured` bool)
+- 🟡 Improve: container Docker sempat mati 2× → pastikan Docker Desktop berjalan sebelum sesi; pertimbangkan auto-start saat boot
+- 🔵 Catatan: kompatibilitas data dua arah dijaga (`_configured` boolean, email lowercase, slug unik)
 
 ---
 
-## Sprint 4 — Task Management (RENCANA)
+## Sprint 4 — Task Management ✅ (SELESAI)
 
-**Goal:** Dashboard task harian, start/finish report, dokumen MinIO, riwayat.
+**Goal:** Manager dapat melihat task harian sesuai role, memulai & menyelesaikan task (field dinamis, foto, dokumen), melihat riwayat selesai, serta pratinjau/unduh berkas.
 
-**Backlog:** S4-1 … S4-5
+**Status per package:**
+- [x] **Pkg 1:** Task dashboard harian — backend `GET /task-dashboard` + halaman `/dashboard/tasks` (task per role, period key, status per periode, ringkasan)
+- [x] **Pkg 2:** Start & finish task — endpoint + form (field tambahan dinamis, foto, dokumen MinIO, alokasi anggota), guard KDKMP (kehadiran & pemilihan task) — sinkronisasi metrik KDKMP menyusul di S5
+- [x] **Pkg 3:** Riwayat task selesai (14 hari, ringkasan harian) + endpoint & aksi pratinjau/unduh dokumen/foto
+
+**Catatan Sprint 4:**
+- **Pkg 1** — endpoint `GET /task-dashboard` (staff/manager/superadmin): task aktif sesuai role user + period key (once/daily/weekly ISO/monthly), laporan terbaru per (task, periode), task **selesai disembunyikan untuk non-superadmin** namun tetap dihitung di summary; manager KDKMP dibatasi task wajib ATAU yang dipilih/dikerjakan hari ini; ringkasan kehadiran operasional (hadir/terpakai/tersedia) untuk manager KDKMP
+- Service baru: `internal/kdkmp` (timezone bisnis `KDKMP_BUSINESS_TIMEZONE`, `SelectionService`, `AllocationService`); model `TaskReport`/`TaskReportValue`/`EbitdamaxKdkmp` + tipe JSON `JSONIntMap`, `IntList`, `StoredDocuments`
+- Bug fix: `ClockTime.String()` nil-safe (panic saat jam pelaksanaan kosong)
+- Halaman `/dashboard/tasks`: ringkasan kartu metrik, kartu kehadiran operasional, daftar task dengan badge status; menu "Tugas Harian" aktif
+- E2E API (5 skenario: manager, superadmin, tanpa pilihan, dengan pilihan, 401) + E2E Playwright UI — semua lolos
+- **Pkg 2** — endpoint multipart `POST /tasks/{id}/start|finish`: foto wajib (maks 3 MB, JPG/PNG/WEBP/GIF), maks 10 dokumen/tahap (10 MB, tipe dokumen umum), nilai field tambahan (`values` JSON + `value_files[field_name]` untuk tipe file), alokasi 7 role + self-assigned khusus manager KDKMP
+- Validasi & guard: task aktif + role terpasang, pemilihan task (403 untuk task opsional yang belum dipilih), kehadiran KDKMP wajib tersimpan, alokasi ≤ sisa tersedia (lock FOR UPDATE), task selesai tidak bisa dimulai lagi, rollback file MinIO saat transaksi gagal
+- Dokumen disimpan via `internal/taskreport` ke MinIO: `task-reports/{uuid}/{phase}/documents|additional-fields/{fieldUuid}/...`; daftar dokumen di-merge ke kolom `started_documents`/`finished_documents`
+- Dialog UI Mulai/Selesaikan: unggah foto & dokumen, render field dinamis per tipe input (text/textarea/angka/tanggal/boolean/select/radio/checkbox/file), input alokasi dengan info "Tersedia"
+- 🐞 Bug ditemukan user saat uji: validasi alokasi ikut berjalan pada mode **finish** → diperbaiki (alokasi hanya untuk start)
+- **Pkg 3** — `GET /task-dashboard/completed`: riwayat 14 hari dikelompokkan per tanggal + ringkasan (total/tepat waktu/terlambat/tidak dikerjakan) + daftar laporan; paginasi 15 hari
+- Endpoint pratinjau/unduh: dokumen (per fase & indeks), foto start/finish, file field tambahan — stream dari MinIO dengan disposisi inline/attachment; otorisasi via `CanViewTaskReport` (owner, superadmin, manager wilayah dengan cakupan regional)
+- Halaman `/dashboard/tasks/completed` + tautan "Riwayat 14 hari" dari Tugas Harian
+- SyncKdkmpActualRevenueAction (metrik KDKMP setelah finish) sengaja ditunda ke S5
+- E2E API: riwayat, preview/download (termasuk 404 indeks/fase, 403 manager lain, 200 manager wilayah, 200 superadmin, 401) — semua lolos
+
+**Review Sprint 4 (✅ goal tercapai):**
+- Manager dapat melihat task harian sesuai role & pemilihan, memulai/menyelesaikan task dengan foto + dokumen + field dinamis + alokasi anggota, melihat riwayat 14 hari dan pratinjau/unduh berkas.
+- Terverifikasi E2E API (~30 skenario) + E2E Playwright UI (mulai & selesaikan task lengkap, riwayat).
+
+**Retro Sprint 4:**
+- 🟢 Keep: pola paket + E2E browser menemukan bug nyata (validasi alokasi di mode finish) dan bug panic nil `ClockTime`
+- 🟡 Improve: hati-hati dengan file chooser Playwright (chooser menggantung bisa memblok interaksi) — tunggu/handle chooser sebelum aksi berikutnya
+- 🔵 Catatan: sinkronisasi metrik KDKMP (actual revenue/cost/scoring) dilakukan saat start/finish di app lama — ditunda ke S5 bersama `SyncKdkmpActualRevenueAction`
 
 ---
 
