@@ -1,17 +1,36 @@
-# SPRINT — EBITDA Max APN (Refactor, scope manager)
+# SPRINT — EBITDA Max APN (Refactor Paritas Manager KDKMP)
 
-Dokumen per-sprint: goal, task, hasil review, retro.
-Durasi sprint: **2 minggu** · Metode: agile · Scope: `manager` + `manager-wilayah` + `superadmin`.
+Dokumen per-sprint: goal, task, hasil review, dan retro. Aplikasi Laravel
+`../ebitdamax-apn` adalah sumber perilaku; refactor Go/Next.js hanya mengejar
+paritas fitur Manager KDKMP.
+
+Durasi sprint: **2 minggu** · Metode: agile · Target utama:
+`roles.domain=kdkmp` + `roles.slug=manager`.
+
+## Batas Produk
+
+- **In scope:** alur kerja, perencanaan, kolaborasi, dan keamanan yang dipakai
+  langsung oleh Manager KDKMP.
+- **Pendukung:** `manager-wilayah` dan `superadmin` hanya sejauh diperlukan
+  untuk menyiapkan akun, role, task, dan data Manager KDKMP.
+- **Di luar scope aktif:** APN corporate, organisasi, dashboard nasional,
+  monitoring regional/superadmin, SDM nasional, import Excel, peta, dan portal
+  eksternal.
+- **Schema:** baseline adalah `migrations/00001_initial_schema.sql`; tidak ada
+  perubahan schema selama Sprint 6–9. Fitur legacy yang tabelnya belum ada
+  ditunda sampai seluruh sprint inti selesai.
 
 ## Definition of Done (DoD)
 
-1. Berjalan lokal via `docker compose up` (API + Web + infra)
-2. Test tersedia & lulus (`go test ./...` / test web)
-3. `go vet` + lint/typecheck kedua repo hijau
+1. Infra lokal berjalan via `docker compose up -d`; API dan web berjalan
+   terpisah melalui `go run .` dan `npm run dev`.
+2. Test tersedia dan lulus (`go test -mod=readonly ./...`), sesuai kebutuhan
+   perubahan.
+3. `go vet ./...`, `npm run lint`, dan `npm run build` hijau.
 4. Endpoint baru terdaftar di Swagger (`swag init`)
 5. Tidak ada regresi sprint sebelumnya
 6. Dicatat di `BACKLOG.md` dengan status `done`
-7. **Skema DB tidak berubah** (schema beku — 41 tabel existing)
+7. Tidak ada perubahan schema di luar parity migration yang telah disetujui.
 
 ---
 
@@ -25,7 +44,7 @@ Durasi sprint: **2 minggu** · Metode: agile · Scope: `manager` + `manager-wila
 
 ---
 
-## Sprint 1 — Auth Core (BERJALAN)
+## Sprint 1 — Auth Core ✅ (SELESAI)
 
 **Goal:** Manager & superadmin dapat login/logout dengan session Redis; navigasi dasar per role; halaman auth & profil.
 
@@ -45,7 +64,7 @@ Durasi sprint: **2 minggu** · Metode: agile · Scope: `manager` + `manager-wila
 - Design system: **palet merah-putih** pada token shadcn (`globals.css` light/dark), tanpa warna mentah
 - `src/lib/server-api.ts`: fetch server-side yang meneruskan cookie session
 - `/login` (client form) → `POST /auth/login`; `/dashboard` (server) → `GET /auth/me`, redirect 401 ke `/login`
-- Logout via `src/components/logout-button.tsx`
+- Logout melalui footer sidebar dan endpoint `POST /auth/logout`
 
 **Catatan teknis Pkg 3:**
 - Route group `(app)` — layout shell server component: fetch `/auth/me` + redirect 401
@@ -126,7 +145,7 @@ Durasi sprint: **2 minggu** · Metode: agile · Scope: `manager` + `manager-wila
 
 ---
 
-## Sprint 3 — Master Data Manager (BERJALAN)
+## Sprint 3 — Master Data Manager ✅ (SELESAI)
 
 **Goal:** Master data yang dibutuhkan fitur manager: Roles, Users KDKMP (+regional assignment, SK), Task Categories, Tasks.
 
@@ -215,40 +234,73 @@ Durasi sprint: **2 minggu** · Metode: agile · Scope: `manager` + `manager-wila
 
 ---
 
-## Sprint 5 — Dashboard KDKMP (RENCANA)
+## Sprint 5 — Dashboard KDKMP ✅ (SELESAI)
 
 **Goal:** Metrik harian, financial matrix, task selection, kehadiran, scoring, input harian.
 
-**Backlog:** S5-1 … S5-5
+**Status per package:**
+- [x] **S5-1:** Metrik harian dari laporan task selesai: actual revenue/cost, durasi, completion, dan time compliance.
+- [x] **S5-2:** Actual variable cost rolling 30 hari + financial matrix (grafik dan tabel) dengan fallback fixed cost legacy Rp9.235.467.
+- [x] **S5-3:** Pilihan task opsional dan ekspansi bundle poin BMC; task in-progress tetap terkunci.
+- [x] **S5-4:** Input kehadiran tujuh role operasional, dengan guard alokasi yang sudah berjalan.
+- [x] **S5-5:** Upsert input harian, review plan revenue di bawah Rp20.000.000, performance scoring, dan sinkronisasi setelah task selesai.
+
+**Catatan Sprint 5:**
+- API manager-only: `GET /kdkmp-dashboard`, `GET /kdkmp-dashboard/input`, serta `PUT /kdkmp-dashboard/today`, `/today/task-selection`, dan `/today/operational-attendance`. Semua memakai gate ketat `role.domain=kdkmp` + `role.slug=manager`.
+- Halaman web: `/dashboard/kdkmp` (ringkasan, matrix biaya, riwayat) dan `/dashboard/kdkmp/input` (target/biaya, kehadiran, pilihan BMC); dashboard generik mengarahkan Manager KDKMP ke halaman baru.
+- Perhitungan mengikuti aplikasi Laravel: target Rp20.000.000, ambang variable cost token listrik Rp3.000.000 dan bahan bakar Rp2.000.000, margin memakai fixed cost Rp9.235.467, dan bobot skor 55/30/15.
+- POS Revenue read-only tidak masuk Sprint 5; tercatat sebagai `D-1` setelah semua sprint selesai.
+
+**Review Sprint 5 (✅ goal tercapai):**
+- Alur Manager KDKMP kini lengkap dari menyimpan kehadiran dan pilihan BMC, memulai/menyelesaikan task, hingga data aktual tersinkron ke dashboard harian.
+- Endpoint tercatat di Swagger; uji unit perhitungan, Go test/vet, serta lint dan production build frontend lulus.
+
+**Retro Sprint 5:**
+- 🟢 Keep: gunakan tabel legacy sebagai kontrak perilaku sehingga tidak perlu mengubah skema beku.
+- 🟡 Improve: sebelum cutover, cocokkan nama task/field revenue dan biaya terhadap data produksi karena formula legacy mengandalkannya.
 
 ---
 
-## Sprint 6 — Monitoring Superadmin (RENCANA)
+## Sprint 6 — Plan EBITDA Matrix Manager (RENCANA)
 
-**Goal:** Admin KDKMP dashboard, task report per entry, konsolidasi wilayah, regional access, announcements.
+**Goal:** Manager KDKMP dapat melihat, membuat, dan memperbarui Plan EBITDA
+Matrix KDKMP Gerai miliknya sendiri menggunakan tabel `plan_ebitda_*` yang
+sudah ada.
 
-**Backlog:** S6-1 … S6-5
-
----
-
-## Sprint 7 — SDM & Monitoring Nasional (RENCANA)
-
-**Goal:** SDM data, import koperasi, cron sarpras, peta monitoring, portal eksternal.
-
-**Backlog:** S7-1 … S7-5
+**Backlog:** S6-1 … S6-5.
 
 ---
 
-## Sprint 8 — Meeting & Pelengkap (RENCANA)
+## Sprint 7 — Kolaborasi Manager (RENCANA)
 
-**Goal:** Meeting minutes + action items, LMS/Lumbung, polish.
+**Goal:** Manager dapat mengelola Meeting Minutes, attachment, dan Action Item
+miliknya melalui tabel meeting yang sudah ada.
 
-**Backlog:** S8-1 … S8-4
+**Backlog:** S7-1 … S7-5.
 
 ---
 
-## Sprint 9 — Parity & Cutover (RENCANA)
+## Sprint 8 — Kesiapan Manager (RENCANA)
 
-**Goal:** Audit parity, migrasi data in-scope, hardening, switch production.
+**Goal:** Tutup kesenjangan UX, navigasi, onboarding, dan validasi data
+operasional Manager KDKMP sebelum cutover.
 
-**Backlog:** S9-1 … S9-5
+**Backlog:** S8-1 … S8-4. Integrasi LMS, Lumbung, dan Lark tetap `blocked`
+hingga kontrak eksternal tersedia dan tidak menjadi syarat selesai sprint.
+
+---
+
+## Sprint 9 — Paritas & Cutover Manager (RENCANA)
+
+**Goal:** Audit paritas alur Manager KDKMP, migrasi data tabel in-scope,
+hardening, backup/rollback, dan cutover.
+
+**Backlog:** S9-1 … S9-5.
+
+---
+
+## Setelah Sprint Inti
+
+- POS Revenue read-only dan Customer Analysis dikerjakan setelah Sprint 9.
+- Customer Analysis memerlukan parity migration baru untuk tabel
+  `customer_analyses`; migration tersebut tidak termasuk Sprint 6–9.

@@ -15,58 +15,25 @@ dipindahkan ke `BACKLOG.md` sebelum dikerjakan.
 - `manager-wilayah` adalah peran terpisah. Cakupan Manager KDKMP berasal dari
   `users.sdm_kdkmp_entry_id`.
 
+## Temuan yang Terselesaikan di Sprint 5
+
+- Scope telah ditegaskan: workflow dashboard harian Manager KDKMP
+  (`ebitdamax_kdkmp`) masuk scope; modul APN corporate tetap di luar scope.
+- Prasyarat task kini dapat disimpan dari web: kehadiran operasional dan pilihan
+  task per bundle BMC, dengan task in-progress tetap terkunci.
+- Endpoint dashboard memakai gate ketat `roles.domain = kdkmp` dan
+  `roles.slug = manager`; navigasi web menggunakan kondisi yang sama.
+- Finish task menyinkronkan actual revenue/cost, variable cost, durasi, margin,
+  dan scoring ke data harian KDKMP.
+
 ## Temuan yang Perlu Ditindaklanjuti
 
-### P0 — Selaraskan keputusan scope Dashboard KDKMP
+### P1 — Verifikasi referensi formula pada data produksi
 
-`BACKLOG.md` menyebut workflow `ebitda_kdkmp` di luar scope, tetapi Sprint 5
-merencanakan dashboard harian KDKMP yang memakai `ebitdamax_kdkmp`. Tegaskan
-apakah alur harian Manager KDKMP memang bagian dari refactor. Jangan mulai Sprint
-5 sebelum istilah dan batas scope ini konsisten.
-
-### P0 — Lengkapi prasyarat eksekusi task Manager KDKMP
-
-Sprint 4 sudah memeriksa kehadiran operasional dan pemilihan task ketika manager
-memulai task. Namun endpoint dan halaman untuk menyimpan keduanya belum ada di
-router refactor. Tanpa data yang dibuat manual, Manager KDKMP tidak dapat
-menyelesaikan alur task mandiri.
-
-Tindak lanjut Sprint 5:
-
-1. Simpan kehadiran operasional harian dengan transaksi dan penguncian baris.
-2. Simpan pemilihan task harian serta ekspansi bundle BMC.
-3. Pertahankan task wajib dan task yang sedang dikerjakan sebagai pilihan yang
-   tidak dapat dilepas.
-4. Baru buka alur start task sebagai perjalanan pengguna yang lengkap.
-
-### P0 — Ketatkan otorisasi berdasarkan domain dan slug
-
-Legacy membedakan Manager KDKMP dengan kombinasi domain dan slug. Refactor masih
-memakai `RequireLevels` pada grup task, sementara navigasi web mengenali manager
-hanya dari slug. Role APN dengan level atau slug yang sama berpotensi melihat
-menu atau mengakses endpoint yang bukan scope-nya.
-
-Tindak lanjut:
-
-- Gunakan gate bersama untuk Manager KDKMP: `domain=kdkmp` + `slug=manager`.
-- Tetapkan jalur Manager Wilayah dan Superadmin secara eksplisit, bukan sebagai
-  efek samping dari level `manager`.
-- Sinkronkan gate backend dengan kondisi navigasi frontend.
-
-### P1 — Porting Dashboard KDKMP harus mengikuti sumber data lama
-
-Alur Laravel untuk dashboard harian adalah:
-
-`task_reports` + `task_report_values` → metrik harian → `ebitdamax_kdkmp` →
-financial matrix dan performance scoring.
-
-Finish task di Laravel ikut menyinkronkan actual revenue. Refactor secara sadar
-menundanya ke Sprint 5; jangan menganggap data dashboard sudah otomatis berubah
-setelah task diselesaikan sebelum sinkronisasi tersebut tersedia.
-
-Saat memindahkan metrik, verifikasi referensi task dan field dari data produksi.
-Aplikasi lama masih mengenali beberapa nilai melalui nama task/field, sehingga
-perubahan seed atau label dapat mengubah hasil perhitungan.
+Formula legacy masih mengenali revenue dan biaya dengan nama task/field. Sebelum
+cutover, cocokkan `Penyetoran Struk dan Uang.rekonsiliasi_uang_masuk` serta
+`Pencatatan Pengeluaran Operasional Harian` dengan data produksi agar perubahan
+master data tidak mengubah hasil perhitungan diam-diam.
 
 ### P1 — Putuskan status Customer Analysis
 
@@ -85,14 +52,12 @@ diperlukan untuk menutup alur task dan dashboard inti.
 
 ## Urutan Rekomendasi Setelah Sprint Aktif
 
-1. Selesaikan dan review Sprint 4 yang sedang aktif.
-2. Selesaikan keputusan scope pada temuan P0 pertama.
-3. Kerjakan Sprint 5 dengan urutan: kehadiran → pemilihan task/BMC → input
-   harian → metrik/scoring → financial matrix.
-4. Audit ulang akses Manager KDKMP, Manager Wilayah, dan Superadmin sebelum
-   membuka monitoring Sprint 6.
-5. Perbarui `BACKLOG.md` dan `SPRINT.md` hanya setelah setiap keputusan scope
-   disetujui.
+1. Verifikasi referensi formula terhadap data produksi tanpa mengubah data.
+2. Putuskan apakah Customer Analysis ikut parity atau eksplisit dikecualikan.
+3. Audit akses Manager KDKMP, Manager Wilayah, dan Superadmin sebelum membuka
+   monitoring Sprint 6.
+4. POS Revenue tetap ditunda sebagai `D-1` di `BACKLOG.md` sampai semua sprint
+   selesai, sesuai arahan user.
 
 ## Referensi Kode
 

@@ -104,6 +104,16 @@ func NewRouter(deps Deps) *gin.Engine {
 				taskDashboard.GET("/task-reports/:id/additional-fields/:valueId/preview", PreviewTaskReportAdditionalFieldHandler)
 				taskDashboard.GET("/task-reports/:id/additional-fields/:valueId/download", DownloadTaskReportAdditionalFieldHandler)
 			}
+
+			kdkmpDashboard := protected.Group("")
+			kdkmpDashboard.Use(RequireKdkmpManager())
+			{
+				kdkmpDashboard.GET("/kdkmp-dashboard", KdkmpDashboardHandler)
+				kdkmpDashboard.GET("/kdkmp-dashboard/input", KdkmpDashboardInputHandler)
+				kdkmpDashboard.PUT("/kdkmp-dashboard/today", UpdateKdkmpDailyHandler)
+				kdkmpDashboard.PUT("/kdkmp-dashboard/today/task-selection", UpdateKdkmpTaskSelectionHandler)
+				kdkmpDashboard.PUT("/kdkmp-dashboard/today/operational-attendance", UpdateKdkmpOperationalAttendanceHandler)
+			}
 		}
 
 		admin := protected.Group("")

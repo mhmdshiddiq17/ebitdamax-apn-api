@@ -107,6 +107,71 @@ func (s *SelectionService) CanStartTask(ctx context.Context, user *models.User, 
 	return false, nil
 }
 
+// SelectableTasksForUser mengambil task opsional aktif yang boleh dipilih manager.
+func (s *SelectionService) SelectableTasksForUser(ctx context.Context, user *models.User) ([]models.Task, error) {
+	if user.RoleID == nil {
+		return []models.Task{}, nil
+	}
+
+	var tasks []models.Task
+	err := s.db.WithContext(ctx).
+		Model(&models.Task{}).
+		Where("tasks.is_active = ? AND tasks.is_mandatory = ?", true, false).
+		Where("EXISTS (SELECT 1 FROM task_roles tr WHERE tr.task_id = tasks.id AND tr.role_id = ?)", *user.RoleID).
+		Order("CASE WHEN tasks.sort_order IS NULL THEN 1 ELSE 0 END").
+		Order("tasks.sort_order").
+		Order("tasks.id").
+		Find(&tasks).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
+}
+
+// ExpandSelectedTaskIDsToBMCBundles memperluas pilihan task ke seluruh task
+// opsional dengan status BMC yang sama, mengikuti perilaku aplikasi lama.
+func (s *SelectionService) ExpandSelectedTaskIDsToBMCBundles(ctx context.Context, user *models.User, selectedIDs []int64) ([]int64, error) {
+	selectable, err := s.SelectableTasksForUser(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	selected := make(map[int64]bool, len(selectedIDs))
+	for _, id := range selectedIDs {
+		if id > 0 {
+			selected[id] = true
+		}
+	}
+
+	if len(selected) == 0 {
+		return []int64{}, nil
+	}
+
+	statuses := make(map[string]bool)
+	validIDs := make(map[int64]bool, len(selectable))
+	for _, task := range selectable {
+		validIDs[task.ID] = true
+		if selected[task.ID] {
+			statuses[task.BMCStatus] = true
+		}
+	}
+	for id := range selected {
+		if !validIDs[id] {
+			return nil, fmt.Errorf("task pilihan tidak tersedia")
+		}
+	}
+
+	expanded := make([]int64, 0, len(selectable))
+	for _, task := range selectable {
+		if statuses[task.BMCStatus] {
+			expanded = append(expanded, task.ID)
+		}
+	}
+
+	return expanded, nil
+}
+
 // DailySelectedTaskIDsByKdkmpEntryAndDate mengambil pilihan task per entry &
 // tanggal (dipakai riwayat harian). Hasil: "entryID|YYYY-MM-DD" → set task ID.
 func (s *SelectionService) DailySelectedTaskIDsByKdkmpEntryAndDate(

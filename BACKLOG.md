@@ -1,133 +1,159 @@
-# BACKLOG — EBITDA Max APN (Refactor Go + Next.js)
+# BACKLOG — EBITDA Max APN (Refactor Paritas Manager KDKMP)
 
-**Scope: role `manager` (Kepala Toko/KDKMP) + `manager-wilayah` (regional) + `superadmin`.**
-Modul APN corporate & workflow KDKMP Gerai (`ebitda_kdkmp`) **di luar scope**.
+`../ebitdamax-apn` adalah sumber perilaku. API Go dan web Next.js hanya
+merefaktor fitur yang dipakai langsung oleh **Manager KDKMP**:
+`roles.domain = kdkmp` dan `roles.slug = manager`.
 
-Status: `todo` / `in_progress` / `review` / `done` / `blocked` / `skip` / `hold` · Prioritas: **P0** wajib, **P1** penting, **P2** opsional.
-
-> **Kebijakan:** setiap arahan user untuk **hold** atau **skip** ditandai di kolom Status (+alasan singkat) dan dicatat di `SPRINT.md`.
+`manager-wilayah` dan `superadmin` hanya berada dalam scope sebagai peran
+pendukung pengelolaan akun, role, task, dan data Manager KDKMP. Mereka bukan
+target fitur baru tersendiri.
 
 Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
+
+## Aturan Backlog
+
+- Status: `todo`, `in_progress`, `review`, `done`, `blocked`, `hold`, `skip`,
+  atau `deferred`.
+- **P0** wajib untuk paritas/cutover, **P1** penting, **P2** opsional.
+- Baseline database adalah `migrations/00001_initial_schema.sql`. Tidak ada
+  perubahan schema pada Sprint 6–9 tanpa persetujuan eksplisit.
+- Setiap item `hold`, `skip`, `blocked`, dan `deferred` menyebutkan alasannya;
+  item tersebut tidak dihitung sebagai pekerjaan sprint aktif.
+
+## Batas Scope
+
+| Kategori | Keputusan |
+|---|---|
+| Manager KDKMP | Target paritas utama: auth, profil, task, dashboard, perencanaan, dan kolaborasi. |
+| Master data pendukung | Selesai pada Sprint 3 dan dipertahankan hanya untuk mendukung Manager KDKMP. |
+| APN corporate | Di luar scope: organisasi, EBITDA tree/value, kalkulasi, value chain, dan dashboard APN. |
+| Monitoring non-manager | Di luar scope aktif: dashboard regional/superadmin, SDM nasional, import Excel, peta, sarpras, dan portal eksternal. |
+| Integrasi eksternal | Tidak dikerjakan tanpa kontrak akses/SSO yang siap; dicatat sebagai `blocked`. |
 
 ## Peta Epic
 
 | # | Epic | Sprint | Status |
-|---|------|--------|--------|
+|---|---|---|---|
 | E0 | Foundation & Infrastruktur | S0 | done |
-| E1 | Auth Core (session, login, reset) | S1 | done |
-| E2 | Auth Lanjutan (2FA, passkeys, notifikasi, onboarding) | S2 | done* |
-| E3 | Master Data Manager (users, roles, kategori, task) | S3 | done* |
-| E4 | Task Management (dashboard, report, dokumen) | S4 | done |
-| E5 | Dashboard KDKMP (metrik, matriks, seleksi, skor) | S5 | todo |
-| E6 | Monitoring Superadmin (admin KDKMP, konsolidasi, announcement) | S6 | todo |
-| E7 | SDM & Monitoring Nasional (import, sarpras, peta) | S7 | todo |
-| E8 | Meeting Minutes & Pelengkap (action items, LMS, Lumbung) | S8 | todo |
-| E9 | Parity, Data Migration & Cutover | S9 | todo |
+| E1 | Auth Core | S1 | done |
+| E2 | Auth Lanjutan & Onboarding | S2 | done* |
+| E3 | Master Data Pendukung Manager | S3 | done* |
+| E4 | Task Management Manager | S4 | done |
+| E5 | Dashboard Harian Manager KDKMP | S5 | done |
+| E6 | Plan EBITDA Matrix Manager | S6 | todo |
+| E7 | Kolaborasi Manager | S7 | todo |
+| E8 | Kesiapan Manager | S8 | todo |
+| E9 | Paritas & Cutover Manager | S9 | todo |
 
-## Sprint 0 — Foundation ✅
+`*` Epic selesai dengan item hold/skip yang tercatat di bagian status khusus.
 
-| ID | Story | Status |
-|----|-------|--------|
-| S0-1 | Docker compose (Postgres `ebitdamax_apn`, Redis, MinIO) | done |
-| S0-2 | Migrasi goose schema existing (41 tabel, parity) — **skema beku** | done |
-| S0-3 | Scaffold Go API (GORM, Redis, MinIO, healthz, Dockerfile) | done |
-| S0-4 | Swagger/OpenAPI (swaggo) | done |
-| S0-5 | Scaffold Next.js 16 (shadcn, api-client, proxy guard) | done |
-| S0-6 | CI kedua repo + BACKLOG/SPRINT | done |
-
-## Sprint 1 — Auth Core (BERJALAN)
+## Sprint 0 — Foundation
 
 | ID | Story | Prioritas | Status |
-|----|-------|-----------|--------|
-| S1-1 | Session manager Redis + cookie `ebitda_session` (HttpOnly, SameSite=Lax) | P0 | done |
-| S1-2 | Endpoint `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` + middleware auth | P0 | done |
-| S1-3 | Seeder `cmd/seed`: roles (superadmin, manager, manager-wilayah) + akun superadmin & manager | P0 | done |
-| S1-4 | Middleware `RequireLevels` (mirror role.level) | P0 | done |
-| S1-5 | CORS (kredensial + origin whitelist) | P0 | done |
-| S1-6 | ~~Lupa/reset password (email)~~ | — | **cancelled** (tidak dibutuhkan) |
-| S1-7 | Halaman web: login + dashboard awal (server fetch, guard 401) | P0 | done |
-| S1-8 | Layout shell: sidebar + header, navigasi per role | P0 | done |
-| S1-9 | Settings profil: edit profil, ganti password | P0 | done |
-| S1-10 | Tema merah-putih (light/dark) di token shadcn | P1 | done |
+|---|---|---|---|
+| S0-1 | Compose Postgres, Redis, dan MinIO untuk lingkungan lokal | P0 | done |
+| S0-2 | Goose baseline schema parity | P0 | done |
+| S0-3 | Scaffold Go API, health check, Dockerfile, dan Swagger | P0 | done |
+| S0-4 | Scaffold Next.js, API client, dan proxy guard | P0 | done |
 
-## Sprint 2 — Auth Lanjutan
+## Sprint 1 — Auth Core
 
 | ID | Story | Prioritas | Status |
-|----|-------|-----------|--------|
-| S2-1 | 2FA TOTP backend: enable/confirm/disable + recovery codes + challenge login | P0 | done |
-| S2-2 | Passkeys/WebAuthn backend: register, login, kelola perangkat | P0 | done |
-| S2-3 | Notifikasi DB: list, read, read-all, bell | P0 | skip (tidak dibutuhkan saat ini) |
-| S2-4 | Onboarding manager (`has_completed_onboarding` + tour) | P1 | done |
-| S2-5 | Settings security & appearance | P0 | done |
-| S2-6 | Halaman web: aktivasi 2FA (QR + kode + recovery codes) + challenge saat login | P0 | done |
-| S2-7 | Halaman web: login & kelola passkey | P0 | hold (menunggu keputusan; fitur jarang dipakai) |
+|---|---|---|---|
+| S1-1 | Session Redis, login, logout, dan current user | P0 | done |
+| S1-2 | CORS, auth guard, serta navigasi per role | P0 | done |
+| S1-3 | Profil, ganti kata sandi, tema, dan shell aplikasi | P0 | done |
+| S1-4 | Seeder role dan akun pengembangan | P1 | done |
+| S1-5 | Reset password melalui email | — | skip (tidak dibutuhkan) |
 
-## Sprint 3 — Master Data Manager
+## Sprint 2 — Auth Lanjutan & Onboarding
 
 | ID | Story | Prioritas | Status |
-|----|-------|-----------|--------|
-| S3-1 | Users KDKMP CRUD + regional assignments + SK document (MinIO) | P0 | done |
-| S3-2 | Roles KDKMP CRUD (backend + halaman web) | P0 | done |
-| S3-3 | Task Categories CRUD (backend + halaman web) | P0 | done |
-| S3-4 | Tasks CRUD (multi-role, period, BMC, cost JSONB, additional fields) | P0 | done |
-| S3-5 | Verifikasi rebuild DB dari nol (goose + seed) | P1 | skip (disetujui; rebuild tetap dicakup saat S9 cutover) |
+|---|---|---|---|
+| S2-1 | 2FA TOTP dan recovery code | P0 | done |
+| S2-2 | Backend passkeys/WebAuthn | P1 | done |
+| S2-3 | Onboarding Manager KDKMP dan pengaturan keamanan/tampilan | P1 | done |
+| S2-4 | Halaman frontend passkeys | P2 | hold (menunggu keputusan SSO Lark) |
+| S2-5 | Notifikasi in-app | P2 | skip (tidak dibutuhkan) |
 
-## Sprint 4 — Task Management
-
-| ID | Story | Prioritas | Status |
-|----|-------|-----------|--------|
-| S4-1 | Task dashboard harian (task per role, period key) | P0 | done |
-| S4-2 | Start/finish report + additional fields | P0 | done |
-| S4-3 | Upload foto + dokumen ke MinIO (fase start/finish) | P0 | done |
-| S4-4 | Preview/download dokumen & foto | P0 | done |
-| S4-5 | Riwayat task selesai (14 hari) | P0 | done |
-
-## Sprint 5 — Dashboard KDKMP
+## Sprint 3 — Master Data Pendukung Manager
 
 | ID | Story | Prioritas | Status |
-|----|-------|-----------|--------|
-| S5-1 | Metrics harian (revenue, cost, durasi, completion, time compliance) | P0 | todo |
-| S5-2 | Actual variable cost + financial matrix harian | P0 | todo |
-| S5-3 | Task selection + bundle BMC | P0 | todo |
-| S5-4 | Kehadiran operasional + alokasi personel | P0 | todo |
-| S5-5 | Performance scoring + upsert/input harian | P0 | todo |
+|---|---|---|---|
+| S3-1 | Roles KDKMP CRUD | P0 | done |
+| S3-2 | Users KDKMP, regional assignment, dan dokumen SK | P0 | done |
+| S3-3 | Task categories CRUD | P0 | done |
+| S3-4 | Tasks CRUD: multi-role, BMC, biaya, dan field laporan | P0 | done |
+| S3-5 | Rebuild database kosong + E2E | P1 | skip (ditangani saat cutover) |
 
-## Sprint 6 — Monitoring Superadmin
-
-| ID | Story | Prioritas | Status |
-|----|-------|-----------|--------|
-| S6-1 | Admin KDKMP dashboard (filter wilayah, status, summary) | P0 | todo |
-| S6-2 | Task report per entry/tanggal | P0 | todo |
-| S6-3 | Konsolidasi wilayah (province/regency/district/village) | P0 | todo |
-| S6-4 | Regional access (row-level + locked filters) | P0 | todo |
-| S6-5 | Announcements (notifikasi per role) | P0 | todo |
-
-## Sprint 7 — SDM & Monitoring Nasional
+## Sprint 4 — Task Management Manager
 
 | ID | Story | Prioritas | Status |
-|----|-------|-----------|--------|
-| S7-1 | SDM Data KDKMP (index, update jumlah karyawan) | P0 | todo |
-| S7-2 | Import koperasi karyawan (NIK + resolusi provinsi) | P0 | todo |
-| S7-3 | Cron sync sarpras status (15 menit) | P0 | todo |
-| S7-4 | Peta monitoring: meta + binary payload + Leaflet | P0 | todo |
-| S7-5 | Integrasi portal eksternal (cache Redis) | P1 | todo |
+|---|---|---|---|
+| S4-1 | Dashboard task sesuai role dan periode | P0 | done |
+| S4-2 | Start/finish task, field dinamis, foto, dokumen, dan alokasi | P0 | done |
+| S4-3 | Riwayat selesai serta preview/download dokumen | P0 | done |
 
-## Sprint 8 — Meeting & Pelengkap
+## Sprint 5 — Dashboard Harian Manager KDKMP
 
 | ID | Story | Prioritas | Status |
-|----|-------|-----------|--------|
-| S8-1 | Meeting minutes CRUD + items + attachment MinIO | P0 | todo |
-| S8-2 | Status history + action items | P0 | todo |
-| S8-3 | LMS KDKMP & Lumbung Chat | P2 | todo |
-| S8-4 | Polish UI + pengaturan sisa | P1 | todo |
-| S8-5 | Integrasi SSO Lark (login via Lark Platform) — menunggu akses/API Lark; desain: OAuth/OIDC callback + mapping user | P1 | todo |
+|---|---|---|---|
+| S5-1 | Metrics revenue, cost, durasi, completion, dan time compliance | P0 | done |
+| S5-2 | Actual variable cost dan financial matrix harian | P0 | done |
+| S5-3 | Pilihan task dan bundle BMC | P0 | done |
+| S5-4 | Kehadiran operasional dan guard alokasi | P0 | done |
+| S5-5 | Input/upsert harian, scoring, dan sinkronisasi task selesai | P0 | done |
 
-## Sprint 9 — Parity & Cutover
+## Sprint 6 — Plan EBITDA Matrix Manager
 
 | ID | Story | Prioritas | Status |
-|----|-------|-----------|--------|
-| S9-1 | Audit parity route/halaman scope manager | P0 | todo |
-| S9-2 | Migrasi data production (hanya tabel in-scope) + verifikasi | P0 | todo |
-| S9-3 | Hardening keamanan + performance pass | P0 | todo |
-| S9-4 | Backup, rollback plan, switch DNS | P0 | todo |
-| S9-5 | Dokumentasi & monitoring pasca-cutover | P1 | todo |
+|---|---|---|---|
+| S6-1 | Model dan repository tabel `plan_ebitda_matrices`, proses, dan row yang sudah ada | P0 | todo |
+| S6-2 | Endpoint baca/create/update Plan EBITDA Matrix KDKMP Gerai milik manager | P0 | todo |
+| S6-3 | Gate kepemilikan ketat Manager KDKMP; tanpa owner selector superadmin | P0 | todo |
+| S6-4 | Template legacy 17 proses, validasi payload, dan penyimpanan atomik | P0 | todo |
+| S6-5 | Halaman matrix yang responsif, dapat digeser, dan navigasi Manager KDKMP | P1 | todo |
+
+## Sprint 7 — Kolaborasi Manager
+
+| ID | Story | Prioritas | Status |
+|---|---|---|---|
+| S7-1 | List/create/update/delete Meeting Minutes milik manager | P0 | todo |
+| S7-2 | Item meeting, urutan, PIC, tenggat, dan status | P0 | todo |
+| S7-3 | Attachment meeting pada MinIO beserta preview/download terotorisasi | P1 | todo |
+| S7-4 | Riwayat status dan halaman Action Items Manager | P1 | todo |
+| S7-5 | Halaman web, navigasi, dan verifikasi owner/access boundary | P0 | todo |
+
+## Sprint 8 — Kesiapan Manager
+
+| ID | Story | Prioritas | Status |
+|---|---|---|---|
+| S8-1 | Tampilan dokumen SK Manager pada profil menggunakan endpoint yang sudah ada | P1 | todo |
+| S8-2 | Lengkapi navigasi dan onboarding untuk dashboard, task, matrix, dan meeting | P1 | todo |
+| S8-3 | Polish mobile, aksesibilitas, empty state, dan error state seluruh alur manager | P1 | todo |
+| S8-4 | Verifikasi read-only mapping task/field revenue dan biaya terhadap data produksi | P0 | todo |
+
+## Sprint 9 — Paritas & Cutover Manager
+
+| ID | Story | Prioritas | Status |
+|---|---|---|---|
+| S9-1 | Audit route, halaman, dan gate terhadap fitur Manager KDKMP legacy | P0 | todo |
+| S9-2 | Migrasi dan verifikasi data hanya untuk tabel in-scope yang sudah ada | P0 | todo |
+| S9-3 | Hardening session, akses, validasi, dan performance pass | P0 | todo |
+| S9-4 | Rebuild database, backup, rollback plan, dan cutover | P0 | todo |
+| S9-5 | Dokumentasi operasional dan monitoring pasca-cutover | P1 | todo |
+
+## Blocked — Kontrak Eksternal Belum Tersedia
+
+| ID | Story | Prioritas | Status |
+|---|---|---|---|
+| B-1 | LMS KDKMP iframe untuk manager | P1 | blocked (URL, akses, dan kontrak sesi belum tersedia) |
+| B-2 | Lumbung Chat iframe | P2 | blocked (URL dan kontrak akses eksternal belum tersedia) |
+| B-3 | SSO Lark | P1 | blocked (akses/API Lark dan parity kolom user belum tersedia) |
+
+## Deferred — Setelah Seluruh Sprint Inti
+
+| ID | Story | Prioritas | Status |
+|---|---|---|---|
+| D-1 | POS Revenue read-only pada Dashboard KDKMP | P1 | deferred (arahan user: setelah seluruh sprint) |
+| D-2 | Customer Analysis Manager KDKMP | P1 | deferred (tabel `customer_analyses` belum ada; perlu parity migration setelah Sprint 9) |

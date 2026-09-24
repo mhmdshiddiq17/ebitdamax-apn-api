@@ -353,7 +353,11 @@ func FinishTaskReportHandler(c *gin.Context) {
 			return err
 		}
 
-		return syncTaskReportValues(c.Request.Context(), tx, &report, task, form, values, "finish", &storedFiles)
+		if err := syncTaskReportValues(c.Request.Context(), tx, &report, task, form, values, "finish", &storedFiles); err != nil {
+			return err
+		}
+
+		return kdkmp.SyncDailyMetrics(c.Request.Context(), tx, user, kdkmp.BusinessDate())
 	})
 
 	if err != nil {

@@ -62,6 +62,27 @@ definitions:
       name:
         type: string
     type: object
+  server.saveKdkmpDailyRequest:
+    properties:
+      plan_revenue:
+        type: string
+      variable_cost:
+        type: string
+    type: object
+  server.saveKdkmpTaskSelectionRequest:
+    properties:
+      selected_task_ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  server.saveOperationalAttendanceRequest:
+    properties:
+      operational_attendance:
+        additionalProperties:
+          type: integer
+        type: object
+    type: object
   server.taskCategoryPayload:
     properties:
       description:
@@ -340,6 +361,187 @@ paths:
       summary: Verifikasi 2FA saat login
       tags:
       - Auth
+  /api/v1/kdkmp-dashboard:
+    get:
+      description: Metrik, financial matrix, dan riwayat harian Manager KDKMP.
+      parameters:
+      - description: Tanggal matrix (YYYY-MM-DD)
+        in: query
+        name: date
+        type: string
+      - description: Halaman riwayat
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Dashboard harian Manager KDKMP
+      tags:
+      - KDKMP Dashboard
+  /api/v1/kdkmp-dashboard/input:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Data input harian Manager KDKMP
+      tags:
+      - KDKMP Dashboard
+  /api/v1/kdkmp-dashboard/today:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Input harian
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.saveKdkmpDailyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Simpan input harian KDKMP
+      tags:
+      - KDKMP Dashboard
+  /api/v1/kdkmp-dashboard/today/operational-attendance:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Kehadiran operasional
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.saveOperationalAttendanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Simpan kehadiran operasional KDKMP
+      tags:
+      - KDKMP Dashboard
+  /api/v1/kdkmp-dashboard/today/task-selection:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Pilihan task
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.saveKdkmpTaskSelectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Simpan pilihan task harian KDKMP
+      tags:
+      - KDKMP Dashboard
   /api/v1/kdkmp-options:
     get:
       description: Daftar data KDKMP untuk dihubungkan ke akun manager (beserta pemilik
