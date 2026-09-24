@@ -16,7 +16,7 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
   atau `deferred`.
 - **P0** wajib untuk paritas/cutover, **P1** penting, **P2** opsional.
 - Baseline database adalah `migrations/00001_initial_schema.sql`. Tidak ada
-  perubahan schema pada Sprint 6–9 tanpa persetujuan eksplisit.
+  perubahan schema pada Sprint 7–9 tanpa persetujuan eksplisit.
 - Setiap item `hold`, `skip`, `blocked`, dan `deferred` menyebutkan alasannya;
   item tersebut tidak dihitung sebagai pekerjaan sprint aktif.
 
@@ -40,7 +40,6 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | E3 | Master Data Pendukung Manager | S3 | done* |
 | E4 | Task Management Manager | S4 | done |
 | E5 | Dashboard Harian Manager KDKMP | S5 | done |
-| E6 | Plan EBITDA Matrix Manager | S6 | todo |
 | E7 | Kolaborasi Manager | S7 | todo |
 | E8 | Kesiapan Manager | S8 | todo |
 | E9 | Paritas & Cutover Manager | S9 | todo |
@@ -103,16 +102,7 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | S5-3 | Pilihan task dan bundle BMC | P0 | done |
 | S5-4 | Kehadiran operasional dan guard alokasi | P0 | done |
 | S5-5 | Input/upsert harian, scoring, dan sinkronisasi task selesai | P0 | done |
-
-## Sprint 6 — Plan EBITDA Matrix Manager
-
-| ID | Story | Prioritas | Status |
-|---|---|---|---|
-| S6-1 | Model dan repository tabel `plan_ebitda_matrices`, proses, dan row yang sudah ada | P0 | todo |
-| S6-2 | Endpoint baca/create/update Plan EBITDA Matrix KDKMP Gerai milik manager | P0 | todo |
-| S6-3 | Gate kepemilikan ketat Manager KDKMP; tanpa owner selector superadmin | P0 | todo |
-| S6-4 | Template legacy 17 proses, validasi payload, dan penyimpanan atomik | P0 | todo |
-| S6-5 | Halaman matrix yang responsif, dapat digeser, dan navigasi Manager KDKMP | P1 | todo |
+| S5-6 | Revisi Financial Matrix dengan Recharts; tabel sebagai alternatif aksesibel | P1 | done |
 
 ## Sprint 7 — Kolaborasi Manager
 

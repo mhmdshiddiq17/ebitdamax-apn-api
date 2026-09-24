@@ -17,7 +17,7 @@ Durasi sprint: **2 minggu** · Metode: agile · Target utama:
   monitoring regional/superadmin, SDM nasional, import Excel, peta, dan portal
   eksternal.
 - **Schema:** baseline adalah `migrations/00001_initial_schema.sql`; tidak ada
-  perubahan schema selama Sprint 6–9. Fitur legacy yang tabelnya belum ada
+  perubahan schema selama Sprint 7–9. Fitur legacy yang tabelnya belum ada
   ditunda sampai seluruh sprint inti selesai.
 
 ## Definition of Done (DoD)
@@ -244,10 +244,12 @@ Durasi sprint: **2 minggu** · Metode: agile · Target utama:
 - [x] **S5-3:** Pilihan task opsional dan ekspansi bundle poin BMC; task in-progress tetap terkunci.
 - [x] **S5-4:** Input kehadiran tujuh role operasional, dengan guard alokasi yang sudah berjalan.
 - [x] **S5-5:** Upsert input harian, review plan revenue di bawah Rp20.000.000, performance scoring, dan sinkronisasi setelah task selesai.
+- [x] **S5-6:** Financial Matrix memakai Recharts: biaya, biaya kumulatif, dan revenue rencana/realisasi; tabel tetap tersedia sebagai alternatif aksesibel.
 
 **Catatan Sprint 5:**
 - API manager-only: `GET /kdkmp-dashboard`, `GET /kdkmp-dashboard/input`, serta `PUT /kdkmp-dashboard/today`, `/today/task-selection`, dan `/today/operational-attendance`. Semua memakai gate ketat `role.domain=kdkmp` + `role.slug=manager`.
 - Halaman web: `/dashboard/kdkmp` (ringkasan, matrix biaya, riwayat) dan `/dashboard/kdkmp/input` (target/biaya, kehadiran, pilihan BMC); dashboard generik mengarahkan Manager KDKMP ke halaman baru.
+- Semua visualisasi chart pada frontend memakai Recharts; Financial Matrix menggunakan `ComposedChart` dengan token warna merah-putih aplikasi.
 - Perhitungan mengikuti aplikasi Laravel: target Rp20.000.000, ambang variable cost token listrik Rp3.000.000 dan bahan bakar Rp2.000.000, margin memakai fixed cost Rp9.235.467, dan bobot skor 55/30/15.
 - POS Revenue read-only tidak masuk Sprint 5; tercatat sebagai `D-1` setelah semua sprint selesai.
 
@@ -258,16 +260,6 @@ Durasi sprint: **2 minggu** · Metode: agile · Target utama:
 **Retro Sprint 5:**
 - 🟢 Keep: gunakan tabel legacy sebagai kontrak perilaku sehingga tidak perlu mengubah skema beku.
 - 🟡 Improve: sebelum cutover, cocokkan nama task/field revenue dan biaya terhadap data produksi karena formula legacy mengandalkannya.
-
----
-
-## Sprint 6 — Plan EBITDA Matrix Manager (RENCANA)
-
-**Goal:** Manager KDKMP dapat melihat, membuat, dan memperbarui Plan EBITDA
-Matrix KDKMP Gerai miliknya sendiri menggunakan tabel `plan_ebitda_*` yang
-sudah ada.
-
-**Backlog:** S6-1 … S6-5.
 
 ---
 
@@ -303,4 +295,4 @@ hardening, backup/rollback, dan cutover.
 
 - POS Revenue read-only dan Customer Analysis dikerjakan setelah Sprint 9.
 - Customer Analysis memerlukan parity migration baru untuk tabel
-  `customer_analyses`; migration tersebut tidak termasuk Sprint 6–9.
+  `customer_analyses`; migration tersebut tidak termasuk Sprint 7–9.
