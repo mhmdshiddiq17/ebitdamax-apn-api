@@ -1,11 +1,428 @@
+definitions:
+  server.loginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  server.passkeyLoginOptionsRequest:
+    properties:
+      email:
+        type: string
+    type: object
+  server.regionalAssignmentPayload:
+    properties:
+      kecamatan:
+        type: string
+      kota_kabupaten:
+        type: string
+      provinsi:
+        type: string
+      scope_level:
+        type: string
+    type: object
+  server.rolePayload:
+    properties:
+      domain:
+        type: string
+      level:
+        type: string
+      name:
+        type: string
+    type: object
+  server.twoFactorCodeRequest:
+    properties:
+      code:
+        type: string
+    type: object
+  server.twoFactorEnableRequest:
+    properties:
+      current_password:
+        type: string
+    type: object
+  server.twoFactorPasswordRequest:
+    properties:
+      current_password:
+        type: string
+    type: object
+  server.updatePasswordRequest:
+    properties:
+      current_password:
+        type: string
+      password:
+        type: string
+      password_confirmation:
+        type: string
+    type: object
+  server.updateProfileRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+    type: object
+  server.userPayload:
+    properties:
+      domain:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      password_confirmation:
+        type: string
+      regional_assignments:
+        items:
+          $ref: '#/definitions/server.regionalAssignmentPayload'
+        type: array
+      role_id:
+        type: integer
+      sdm_kdkmp_entry_id:
+        type: integer
+    type: object
 host: localhost:4000
 info:
   contact: {}
-  description: REST API aplikasi EBITDA Max APN (refactor Go + Next.js). Semua endpoint
-    bisnis berada di bawah /api/v1.
+  description: REST API aplikasi EBITDA Max APN (refactor Go + Next.js) — scope manager
+    KDKMP & superadmin.
   title: EBITDA Max APN API
   version: "1.0"
 paths:
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Autentikasi dengan email & kata sandi; membuat session cookie `ebitda_session`.
+      parameters:
+      - description: Kredensial
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login
+      tags:
+      - Auth
+  /api/v1/auth/logout:
+    post:
+      description: Menghapus session di Redis dan cookie.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Logout
+      tags:
+      - Auth
+  /api/v1/auth/me:
+    get:
+      description: Mengembalikan user yang sedang login (beserta role).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Profil pengguna saat ini
+      tags:
+      - Auth
+  /api/v1/auth/passkey/login:
+    post:
+      consumes:
+      - application/json
+      description: Memverifikasi respons assertion dan membuat session login.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Selesaikan login passkey
+      tags:
+      - Auth
+  /api/v1/auth/passkey/options:
+    post:
+      consumes:
+      - application/json
+      description: Mengembalikan opsi WebAuthn (publicKey) untuk login passkey berdasarkan
+        email; menyimpan challenge di cookie `ebitda_passkey`.
+      parameters:
+      - description: Email
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.passkeyLoginOptionsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Mulai login passkey
+      tags:
+      - Auth
+  /api/v1/auth/two-factor-challenge:
+    post:
+      consumes:
+      - application/json
+      description: Menyelesaikan login yang tertahan 2FA memakai kode TOTP atau recovery
+        code.
+      parameters:
+      - description: Kode TOTP atau recovery code
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.twoFactorCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Verifikasi 2FA saat login
+      tags:
+      - Auth
+  /api/v1/kdkmp-options:
+    get:
+      description: Daftar data KDKMP untuk dihubungkan ke akun manager (beserta pemilik
+        saat ini).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Opsi data KDKMP
+      tags:
+      - Users
+  /api/v1/passkeys:
+    get:
+      description: Menampilkan passkey milik user yang sedang login.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Daftar passkey
+      tags:
+      - Passkeys
+  /api/v1/passkeys/{id}:
+    delete:
+      description: Menghapus passkey milik user yang sedang login.
+      parameters:
+      - description: ID passkey
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Hapus passkey
+      tags:
+      - Passkeys
+  /api/v1/passkeys/register:
+    post:
+      consumes:
+      - application/json
+      description: Memverifikasi respons attestation dan menyimpan passkey. Nama perangkat
+        opsional via query `name`.
+      parameters:
+      - description: Nama perangkat
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Selesaikan registrasi passkey
+      tags:
+      - Passkeys
+  /api/v1/passkeys/register/options:
+    post:
+      description: Mengembalikan opsi WebAuthn (publicKey) untuk membuat passkey baru;
+        menyimpan challenge di cookie `ebitda_passkey`.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Mulai registrasi passkey
+      tags:
+      - Passkeys
   /api/v1/ping:
     get:
       description: Cek apakah API hidup
@@ -21,6 +438,798 @@ paths:
       summary: Ping
       tags:
       - Health
+  /api/v1/profile:
+    patch:
+      consumes:
+      - application/json
+      description: Mengubah nama dan email user yang sedang login.
+      parameters:
+      - description: Data profil
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.updateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Perbarui profil
+      tags:
+      - Profile
+  /api/v1/profile/password:
+    put:
+      consumes:
+      - application/json
+      description: Mengganti kata sandi user yang sedang login (wajib kata sandi saat
+        ini).
+      parameters:
+      - description: Data kata sandi
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.updatePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Ganti kata sandi
+      tags:
+      - Profile
+  /api/v1/region-options:
+    get:
+      description: Kombinasi wilayah distinct dari KDKMP yang dikelola manager (untuk
+        editor cakupan wilayah).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Opsi wilayah
+      tags:
+      - Users
+  /api/v1/roles:
+    get:
+      description: Daftar role per domain (default kdkmp) dengan pencarian, urutan,
+        dan paginasi.
+      parameters:
+      - description: Domain (apn|kdkmp)
+        in: query
+        name: domain
+        type: string
+      - description: Cari nama/slug/level
+        in: query
+        name: search
+        type: string
+      - description: 'Urutkan: name|level|created_at'
+        in: query
+        name: sort
+        type: string
+      - description: asc|desc
+        in: query
+        name: direction
+        type: string
+      - description: Halaman
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Daftar role
+      tags:
+      - Roles
+    post:
+      consumes:
+      - application/json
+      description: Membuat role baru (slug dibuat otomatis dari nama, dijamin unik).
+      parameters:
+      - description: Data role
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.rolePayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Tambah role
+      tags:
+      - Roles
+  /api/v1/roles/{id}:
+    delete:
+      description: Menghapus role; ditolak bila masih dipakai user atau task.
+      parameters:
+      - description: ID role
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Hapus role
+      tags:
+      - Roles
+    put:
+      consumes:
+      - application/json
+      description: Mengubah nama dan level role; slug ikut diperbarui.
+      parameters:
+      - description: ID role
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Data role
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.rolePayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Ubah role
+      tags:
+      - Roles
+  /api/v1/two-factor:
+    delete:
+      consumes:
+      - application/json
+      description: Menonaktifkan 2FA dan menghapus secret + recovery codes. Wajib
+        kata sandi saat ini.
+      parameters:
+      - description: Kata sandi saat ini
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.twoFactorPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Nonaktifkan 2FA
+      tags:
+      - Two-Factor
+    get:
+      description: Mengetahui apakah 2FA aktif untuk user yang sedang login.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Status 2FA
+      tags:
+      - Two-Factor
+  /api/v1/two-factor/confirm:
+    post:
+      consumes:
+      - application/json
+      description: Memverifikasi kode TOTP pertama dan mengaktifkan 2FA; mengembalikan
+        recovery codes (tampil sekali).
+      parameters:
+      - description: Kode TOTP
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.twoFactorCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                type: string
+              type: array
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Konfirmasi 2FA
+      tags:
+      - Two-Factor
+  /api/v1/two-factor/enable:
+    post:
+      consumes:
+      - application/json
+      description: Membuat secret TOTP baru (belum aktif sampai dikonfirmasi kode).
+        Wajib kata sandi saat ini.
+      parameters:
+      - description: Kata sandi saat ini
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.twoFactorEnableRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Mulai aktifkan 2FA
+      tags:
+      - Two-Factor
+  /api/v1/two-factor/recovery-codes:
+    post:
+      consumes:
+      - application/json
+      description: Mengganti seluruh recovery codes 2FA. Wajib kata sandi saat ini.
+      parameters:
+      - description: Kata sandi saat ini
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.twoFactorPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                type: string
+              type: array
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Buat ulang recovery codes
+      tags:
+      - Two-Factor
+  /api/v1/users:
+    get:
+      description: Daftar user domain KDKMP (superadmin) dengan pencarian, filter
+        role, urutan, dan paginasi.
+      parameters:
+      - description: Cari nama/username/email
+        in: query
+        name: search
+        type: string
+      - description: Filter role
+        in: query
+        name: role_id
+        type: integer
+      - description: 'Urutkan: name|email|created_at'
+        in: query
+        name: sort
+        type: string
+      - description: asc|desc
+        in: query
+        name: direction
+        type: string
+      - description: Halaman
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Daftar user
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Membuat user domain KDKMP; manager wajib terhubung ke data KDKMP,
+        manager wilayah wajib punya cakupan.
+      parameters:
+      - description: Data user
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.userPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Tambah user
+      tags:
+      - Users
+  /api/v1/users/{id}:
+    delete:
+      description: Menghapus user KDKMP (tidak dapat menghapus akun sendiri).
+      parameters:
+      - description: ID user
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Hapus user
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Mengubah data user KDKMP; kata sandi opsional.
+      parameters:
+      - description: ID user
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Data user
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.userPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Ubah user
+      tags:
+      - Users
+  /api/v1/users/{id}/manager-sk-document:
+    get:
+      description: Menampilkan dokumen SK Manager (superadmin atau pemilik akun manager).
+      parameters:
+      - description: ID user manager
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/pdf
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Pratinjau SK Manager
+      tags:
+      - Users
+    post:
+      consumes:
+      - multipart/form-data
+      description: Mengunggah dokumen SK (PDF, maks 10 MB) untuk akun manager KDKMP.
+        Dokumen lama diganti.
+      parameters:
+      - description: ID user manager
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Dokumen SK (PDF)
+        in: formData
+        name: manager_sk_document
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Unggah SK Manager
+      tags:
+      - Users
+  /api/v1/users/complete-onboarding:
+    post:
+      description: Menandai onboarding manager KDKMP sebagai selesai (hanya role manager
+        domain kdkmp).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Selesaikan onboarding
+      tags:
+      - Users
   /healthz:
     get:
       description: Status koneksi database, redis, dan minio
@@ -44,4 +1253,9 @@ paths:
       - Health
 schemes:
 - http
+securityDefinitions:
+  CookieAuth:
+    in: cookie
+    name: ebitda_session
+    type: apiKey
 swagger: "2.0"

@@ -1,0 +1,235 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500&display=swap');
+
+  #manager-dashboard-mock {
+    --ui-red: #c9182b;
+    --ui-red-soft: #fff0f1;
+    --ui-ink: #1d2027;
+    --ui-muted: #747984;
+    --ui-line: #e9e9ec;
+    --ui-surface: #ffffff;
+    --ui-canvas: #f8f8fa;
+    --ui-green: #16795a;
+    --ui-shadow: 0 12px 32px rgb(32 22 27 / 7%);
+    color: var(--ui-ink);
+    font-family: Manrope, sans-serif;
+  }
+
+  #manager-dashboard-mock * { box-sizing: border-box; }
+  #manager-dashboard-mock button { font: inherit; }
+  #manager-dashboard-mock .app {
+    display: grid;
+    grid-template-columns: 236px minmax(0, 1fr);
+    min-height: 680px;
+    overflow: hidden;
+    background: var(--ui-canvas);
+    border: 1px solid var(--ui-line);
+    border-radius: 20px;
+  }
+  #manager-dashboard-mock .side {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    padding: 24px 16px;
+    background: var(--ui-surface);
+    border-right: 1px solid var(--ui-line);
+  }
+  #manager-dashboard-mock .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: -.02em;
+  }
+  #manager-dashboard-mock .brand-mark {
+    display: grid;
+    width: 31px;
+    height: 31px;
+    place-items: center;
+    color: #fff;
+    background: var(--ui-red);
+    border-radius: 9px;
+  }
+  #manager-dashboard-mock .brand-mark svg { width: 17px; height: 17px; }
+  #manager-dashboard-mock .eyebrow {
+    margin: 0 8px 8px;
+    color: var(--ui-muted);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  #manager-dashboard-mock .nav { display: grid; gap: 4px; }
+  #manager-dashboard-mock .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 42px;
+    padding: 0 12px;
+    color: #5f6470;
+    border-radius: 9px;
+    font-size: 13px;
+    text-decoration: none;
+  }
+  #manager-dashboard-mock .nav-item svg { width: 17px; height: 17px; }
+  #manager-dashboard-mock .nav-item.active {
+    color: var(--ui-red);
+    background: var(--ui-red-soft);
+    font-weight: 500;
+  }
+  #manager-dashboard-mock .help {
+    margin-top: auto;
+    padding: 14px;
+    color: #555b66;
+    background: #fafafb;
+    border-radius: 12px;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+  #manager-dashboard-mock .help strong { display: block; margin-bottom: 3px; color: var(--ui-ink); font-weight: 500; }
+  #manager-dashboard-mock .main { padding: 24px 28px 32px; }
+  #manager-dashboard-mock .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    min-height: 32px;
+  }
+  #manager-dashboard-mock .date { color: var(--ui-muted); font-size: 12px; }
+  #manager-dashboard-mock .avatar {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    color: #8d1422;
+    background: #ffe7e9;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  #manager-dashboard-mock .intro { margin: 24px 0 22px; }
+  #manager-dashboard-mock h1 { margin: 0; font-size: 27px; font-weight: 500; letter-spacing: -.045em; }
+  #manager-dashboard-mock .intro p { margin: 7px 0 0; color: var(--ui-muted); font-size: 13px; }
+  #manager-dashboard-mock .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 24px;
+    padding: 23px 24px;
+    color: #fff;
+    background: linear-gradient(120deg, #a70f20, var(--ui-red));
+    border-radius: 15px;
+    box-shadow: 0 12px 28px rgb(154 17 33 / 17%);
+  }
+  #manager-dashboard-mock .hero small { display: block; opacity: .74; font-size: 12px; }
+  #manager-dashboard-mock .hero-title { margin: 7px 0; font-size: 18px; font-weight: 500; letter-spacing: -.025em; }
+  #manager-dashboard-mock .hero-copy { max-width: 450px; margin: 0; opacity: .82; font-size: 12px; line-height: 1.6; }
+  #manager-dashboard-mock .score { min-width: 106px; padding-left: 22px; border-left: 1px solid rgb(255 255 255 / 22%); text-align: right; }
+  #manager-dashboard-mock .score strong { display: block; margin-top: 5px; font-size: 35px; font-weight: 500; letter-spacing: -.06em; }
+  #manager-dashboard-mock .score span { opacity: .75; font-size: 11px; }
+  #manager-dashboard-mock .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+  }
+  #manager-dashboard-mock .metric {
+    min-width: 0;
+    padding: 16px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-line);
+    border-radius: 12px;
+    box-shadow: 0 3px 10px rgb(34 27 30 / 2%);
+  }
+  #manager-dashboard-mock .metric-label { display: flex; gap: 7px; align-items: center; color: var(--ui-muted); font-size: 11px; }
+  #manager-dashboard-mock .metric-label svg { width: 15px; height: 15px; color: var(--ui-red); }
+  #manager-dashboard-mock .metric-value { margin-top: 14px; color: var(--ui-ink); font-size: 20px; font-weight: 500; letter-spacing: -.045em; white-space: nowrap; }
+  #manager-dashboard-mock .metric-note { margin-top: 6px; color: var(--ui-muted); font-size: 11px; }
+  #manager-dashboard-mock .metric-note.good { color: var(--ui-green); }
+  #manager-dashboard-mock .workspace { display: grid; grid-template-columns: 1.35fr .85fr; gap: 14px; margin-top: 14px; }
+  #manager-dashboard-mock .panel { padding: 19px; background: var(--ui-surface); border: 1px solid var(--ui-line); border-radius: 12px; }
+  #manager-dashboard-mock .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  #manager-dashboard-mock h2 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: -.025em; }
+  #manager-dashboard-mock .text-link { color: var(--ui-red); font-size: 11px; font-weight: 500; text-decoration: none; }
+  #manager-dashboard-mock .task { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 11px; padding: 15px 0; border-top: 1px solid var(--ui-line); }
+  #manager-dashboard-mock .task:first-of-type { margin-top: 13px; }
+  #manager-dashboard-mock .task-icon { display: grid; width: 30px; height: 30px; place-items: center; color: var(--ui-red); background: var(--ui-red-soft); border-radius: 8px; }
+  #manager-dashboard-mock .task-icon svg { width: 15px; height: 15px; }
+  #manager-dashboard-mock .task-title { min-width: 0; font-size: 12px; font-weight: 500; }
+  #manager-dashboard-mock .task-meta { margin-top: 3px; color: var(--ui-muted); font-size: 11px; }
+  #manager-dashboard-mock .tag { padding: 4px 7px; color: #98620a; background: #fff7df; border-radius: 999px; font-size: 10px; white-space: nowrap; }
+  #manager-dashboard-mock .action { display: flex; flex-direction: column; justify-content: space-between; min-height: 190px; }
+  #manager-dashboard-mock .action p { margin: 7px 0 0; color: var(--ui-muted); font-size: 12px; line-height: 1.55; }
+  #manager-dashboard-mock .action button { width: 100%; min-height: 39px; color: #fff; background: var(--ui-red); border: 0; border-radius: 9px; font-size: 12px; font-weight: 500; }
+  #manager-dashboard-mock .action button span { display: inline-flex; gap: 7px; align-items: center; }
+  #manager-dashboard-mock .action button svg { width: 15px; height: 15px; }
+  @media (max-width: 780px) {
+    #manager-dashboard-mock .app { grid-template-columns: 1fr; }
+    #manager-dashboard-mock .side { display: none; }
+    #manager-dashboard-mock .main { padding: 20px; }
+    #manager-dashboard-mock .metric-grid, #manager-dashboard-mock .workspace { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 500px) {
+    #manager-dashboard-mock .hero { grid-template-columns: 1fr; }
+    #manager-dashboard-mock .score { padding: 14px 0 0; border-top: 1px solid rgb(255 255 255 / 22%); border-left: 0; text-align: left; }
+    #manager-dashboard-mock .metric-grid, #manager-dashboard-mock .workspace { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div id="manager-dashboard-mock" aria-label="Mockup dashboard manager KDKMP">
+  <div class="app">
+    <aside class="side" aria-label="Navigasi utama">
+      <div class="brand"><span class="brand-mark"><i data-lucide="trending-up" aria-hidden="true"></i></span>EBITDA Max APN</div>
+      <div>
+        <p class="eyebrow">Menu utama</p>
+        <nav class="nav">
+          <a class="nav-item active" href="#overview"><i data-lucide="layout-dashboard" aria-hidden="true"></i>Ringkasan</a>
+          <a class="nav-item" href="#tasks"><i data-lucide="check-square" aria-hidden="true"></i>Tugas harian</a>
+          <a class="nav-item" href="#analysis"><i data-lucide="users" aria-hidden="true"></i>Customer analysis</a>
+          <a class="nav-item" href="#learning"><i data-lucide="graduation-cap" aria-hidden="true"></i>LMS KDKMP</a>
+        </nav>
+      </div>
+      <div class="help"><strong>Butuh bantuan?</strong>Pelajari alur operasional melalui LMS KDKMP.</div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><span class="date">Selasa, 23 September 2026</span><span class="avatar" aria-label="Profil DN">DN</span></header>
+      <section class="intro"><h1>Selamat pagi, Deni</h1><p>Ini ringkasan operasional koperasi Anda hari ini.</p></section>
+      <section class="hero" aria-label="Kinerja hari ini">
+        <div><small>Kinerja hari ini</small><div class="hero-title">Operasional berjalan dengan baik</div><p class="hero-copy">Selesaikan dua tugas tersisa agar performa dan kepatuhan waktu hari ini tetap optimal.</p></div>
+        <div class="score"><small>Skor kinerja</small><strong>84%</strong><span>+6% dari kemarin</span></div>
+      </section>
+      <section class="metric-grid" aria-label="Metrik operasional">
+        <article class="metric"><div class="metric-label"><i data-lucide="wallet-cards" aria-hidden="true"></i>Revenue aktual</div><div class="metric-value">Rp14,8 jt</div><div class="metric-note good">74% dari rencana</div></article>
+        <article class="metric"><div class="metric-label"><i data-lucide="receipt-text" aria-hidden="true"></i>Biaya aktual</div><div class="metric-value">Rp3,2 jt</div><div class="metric-note">Dalam batas rencana</div></article>
+        <article class="metric"><div class="metric-label"><i data-lucide="circle-check-big" aria-hidden="true"></i>Tugas selesai</div><div class="metric-value">5 / 7</div><div class="metric-note">2 tugas perlu dikerjakan</div></article>
+        <article class="metric"><div class="metric-label"><i data-lucide="users-round" aria-hidden="true"></i>Kehadiran</div><div class="metric-value">12 orang</div><div class="metric-note good">Data sudah disimpan</div></article>
+      </section>
+      <section class="workspace">
+        <article class="panel" id="tasks"><div class="panel-head"><h2>Tugas hari ini</h2><a class="text-link" href="#all-tasks">Lihat semua</a></div>
+          <div class="task"><span class="task-icon"><i data-lucide="clipboard-check" aria-hidden="true"></i></span><div><div class="task-title">Pemeriksaan stok harian</div><div class="task-meta">Sebelum 13.00 WIB · 30 menit</div></div><span class="tag">Berjalan</span></div>
+          <div class="task"><span class="task-icon"><i data-lucide="camera" aria-hidden="true"></i></span><div><div class="task-title">Dokumentasi display gerai</div><div class="task-meta">Sebelum 16.00 WIB · 20 menit</div></div><span class="tag">Belum mulai</span></div>
+        </article>
+        <article class="panel action"><div><h2>Mulai operasional</h2><p>Simpan kehadiran anggota terlebih dahulu sebelum memulai tugas yang membutuhkan alokasi personel.</p></div><button type="button"><span>Atur kehadiran <i data-lucide="arrow-right" aria-hidden="true"></i></span></button></article>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const root = document.getElementById('manager-dashboard-mock');
+    const state = { font: 'Manrope', red: '#c9182b' };
+    function render() {
+      root.style.fontFamily = `${state.font}, sans-serif`;
+      root.style.setProperty('--ui-red', state.red);
+    }
+    render();
+    if (globalThis.Tweak) {
+      const tweak = new Tweak({ container: root, onChange: render });
+      tweak.addSelect(state, 'font', { label: 'Font', options: ['Manrope', 'Plus Jakarta Sans'], reference: '--font-dashboard' });
+      tweak.addColorPicker(state, 'red', { label: 'Merah utama', reference: '--ui-red' });
+    }
+    if (globalThis.lucide) globalThis.lucide.createIcons({ attrs: { width: 16, height: 16 } });
+  })();
+</script>
