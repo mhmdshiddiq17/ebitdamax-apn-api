@@ -227,14 +227,12 @@ func FinishPasskeyLoginHandler(c *gin.Context) {
 		return
 	}
 
-	sessionID, err := AppDeps.Session.Create(c.Request.Context(), user.ID)
-	if err != nil {
+	if err := replaceSession(c, user.ID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Gagal membuat sesi"})
 		return
 	}
 
 	clearPasskeyCookie(c)
-	setSessionCookie(c, sessionID, int(AppDeps.SessionTTL.Seconds()))
 
 	c.JSON(http.StatusOK, userResponse(user))
 }

@@ -73,13 +73,10 @@ func LoginHandler(c *gin.Context) {
 		return
 	}
 
-	sessionID, err := AppDeps.Session.Create(c.Request.Context(), user.ID)
-	if err != nil {
+	if err := replaceSession(c, user.ID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Gagal membuat sesi"})
 		return
 	}
-
-	setSessionCookie(c, sessionID, int(AppDeps.SessionTTL.Seconds()))
 
 	c.JSON(http.StatusOK, userResponse(&user))
 }
@@ -146,6 +143,21 @@ func clearSessionCookie(c *gin.Context) {
 	)
 }
 
+// replaceSession mengganti sesi aktif agar ID sesi sebelum autentikasi atau
+// perubahan kredensial tidak dapat dipakai kembali.
+func replaceSession(c *gin.Context, userID int64) error {
+	if sessionID, err := c.Cookie(AppDeps.SessionCookie); err == nil && sessionID != "" {
+		_ = AppDeps.Session.Destroy(c.Request.Context(), sessionID)
+	}
+
+	sessionID, err := AppDeps.Session.Create(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
+	setSessionCookie(c, sessionID, int(AppDeps.SessionTTL.Seconds()))
+	return nil
+}
+
 func userResponse(user *models.User) gin.H {
 	response := gin.H{
 		"id":                       user.ID,
@@ -156,6 +168,7 @@ func userResponse(user *models.User) gin.H {
 		"sdm_kdkmp_entry_id":       user.SDMKdkmpEntryID,
 		"has_completed_onboarding": user.HasCompletedOnboarding,
 		"two_factor_enabled":       user.TwoFactorConfirmedAt != nil,
+		"manager_sk_document":      skDocumentResponse(user),
 	}
 
 	if user.Role != nil {

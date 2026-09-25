@@ -37,6 +37,48 @@ definitions:
     - email
     - password
     type: object
+  server.meetingMinuteItemPayload:
+    properties:
+      action:
+        type: string
+      date_finish:
+        type: string
+      date_start:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      objectives:
+        type: string
+      pic:
+        type: string
+      remarks:
+        type: string
+      status:
+        type: string
+      subject:
+        type: string
+    type: object
+  server.meetingMinutePayload:
+    properties:
+      attendees:
+        type: string
+      end_time:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/server.meetingMinuteItemPayload'
+        type: array
+      location:
+        type: string
+      meeting_date:
+        type: string
+      start_time:
+        type: string
+      title:
+        type: string
+    type: object
   server.passkeyLoginOptionsRequest:
     properties:
       email:
@@ -142,6 +184,13 @@ definitions:
   server.twoFactorPasswordRequest:
     properties:
       current_password:
+        type: string
+    type: object
+  server.updateMeetingActionItemPayload:
+    properties:
+      remarks:
+        type: string
+      status:
         type: string
     type: object
   server.updatePasswordRequest:
@@ -571,6 +620,490 @@ paths:
       summary: Opsi data KDKMP
       tags:
       - Users
+  /api/v1/meeting-minutes:
+    get:
+      parameters:
+      - description: Cari judul, lokasi, atau peserta
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Daftar Meeting Minutes milik Manager KDKMP
+      tags:
+      - Meeting Minutes
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Meeting Minutes dan item
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.meetingMinutePayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Buat Meeting Minutes milik Manager KDKMP
+      tags:
+      - Meeting Minutes
+  /api/v1/meeting-minutes/{id}:
+    delete:
+      parameters:
+      - description: ID Meeting Minutes
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Hapus Meeting Minutes milik Manager KDKMP
+      tags:
+      - Meeting Minutes
+    get:
+      parameters:
+      - description: ID Meeting Minutes
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Detail Meeting Minutes milik Manager KDKMP
+      tags:
+      - Meeting Minutes
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID Meeting Minutes
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Meeting Minutes dan snapshot item
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.meetingMinutePayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Perbarui Meeting Minutes milik Manager KDKMP
+      tags:
+      - Meeting Minutes
+  /api/v1/meeting-minutes/{id}/attachments:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: ID Meeting Minutes
+        in: path
+        name: id
+        required: true
+        type: integer
+      - collectionFormat: csv
+        description: Lampiran (maksimal 10 file, 10 MB per file)
+        in: formData
+        items:
+          type: file
+        name: documents
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Unggah lampiran Meeting Minutes ke MinIO
+      tags:
+      - Meeting Minutes
+  /api/v1/meeting-minutes/{id}/attachments/{attachmentID}:
+    delete:
+      parameters:
+      - description: ID Meeting Minutes
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID lampiran
+        in: path
+        name: attachmentID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Hapus lampiran Meeting Minutes
+      tags:
+      - Meeting Minutes
+  /api/v1/meeting-minutes/{id}/attachments/{attachmentID}/download:
+    get:
+      parameters:
+      - description: ID Meeting Minutes
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID lampiran
+        in: path
+        name: attachmentID
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Unduh lampiran Meeting Minutes
+      tags:
+      - Meeting Minutes
+  /api/v1/meeting-minutes/{id}/attachments/{attachmentID}/preview:
+    get:
+      parameters:
+      - description: ID Meeting Minutes
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID lampiran
+        in: path
+        name: attachmentID
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Pratinjau lampiran Meeting Minutes
+      tags:
+      - Meeting Minutes
+  /api/v1/meeting-minutes/action-items:
+    get:
+      parameters:
+      - description: Cari subjek, aksi, PIC, atau meeting
+        in: query
+        name: search
+        type: string
+      - description: open|in_progress|completed|cancelled
+        in: query
+        name: status
+        type: string
+      - description: Hanya item terlambat
+        in: query
+        name: overdue
+        type: boolean
+      - description: Halaman
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Daftar Action Items milik Manager KDKMP
+      tags:
+      - Meeting Minutes
+  /api/v1/meeting-minutes/action-items/{itemID}:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID Action Item
+        in: path
+        name: itemID
+        required: true
+        type: integer
+      - description: Status dan catatan
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.updateMeetingActionItemPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Perbarui status Action Item milik Manager KDKMP
+      tags:
+      - Meeting Minutes
   /api/v1/passkeys:
     get:
       description: Menampilkan passkey milik user yang sedang login.

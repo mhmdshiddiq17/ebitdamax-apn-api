@@ -10,6 +10,7 @@ import (
 	"agrinaspangan/ebitda-api/internal/crypto"
 	"agrinaspangan/ebitda-api/internal/database"
 	"agrinaspangan/ebitda-api/internal/kdkmp"
+	"agrinaspangan/ebitda-api/internal/meetingminutes"
 	"agrinaspangan/ebitda-api/internal/passkey"
 	"agrinaspangan/ebitda-api/internal/server"
 	"agrinaspangan/ebitda-api/internal/session"
@@ -62,6 +63,7 @@ func main() {
 		Selection:     kdkmp.NewSelectionService(db),
 		Allocation:    kdkmp.NewAllocationService(db),
 		TaskReports:   taskreport.NewDocumentService(files),
+		Meetings:      meetingminutes.NewService(db, files),
 		SessionCookie: sessionCookie,
 		SessionTTL:    sessionTTL,
 		SessionSecure: sessionSecure,

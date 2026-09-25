@@ -79,6 +79,46 @@ func (m *Manager) Destroy(ctx context.Context, id string) error {
 	return m.redis.Del(ctx, keyPrefix+id).Err()
 }
 
+// DestroyUserSessions mencabut seluruh sesi aktif milik satu akun.
+func (m *Manager) DestroyUserSessions(ctx context.Context, userID int64) error {
+	// ponytail: password changes scan active sessions; add a per-user index if session volume makes this slow.
+	var cursor uint64
+	for {
+		keys, next, err := m.redis.Scan(ctx, cursor, keyPrefix+"*", 100).Result()
+		if err != nil {
+			return err
+		}
+		if len(keys) > 0 {
+			values, err := m.redis.MGet(ctx, keys...).Result()
+			if err != nil {
+				return err
+			}
+
+			toDelete := make([]string, 0, len(keys))
+			for index, value := range values {
+				raw, ok := value.(string)
+				if !ok {
+					continue
+				}
+				var data Data
+				if json.Unmarshal([]byte(raw), &data) == nil && data.UserID == userID {
+					toDelete = append(toDelete, keys[index])
+				}
+			}
+			if len(toDelete) > 0 {
+				if err := m.redis.Del(ctx, toDelete...).Err(); err != nil {
+					return err
+				}
+			}
+		}
+
+		cursor = next
+		if cursor == 0 {
+			return nil
+		}
+	}
+}
+
 // PutJSON menyimpan value JSON dengan TTL (state sementara, mis. challenge 2FA).
 func (m *Manager) PutJSON(ctx context.Context, key string, value any, ttl time.Duration) error {
 	payload, err := json.Marshal(value)

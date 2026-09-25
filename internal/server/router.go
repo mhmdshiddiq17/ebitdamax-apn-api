@@ -12,6 +12,7 @@ import (
 
 	"agrinaspangan/ebitda-api/config"
 	"agrinaspangan/ebitda-api/internal/kdkmp"
+	"agrinaspangan/ebitda-api/internal/meetingminutes"
 	"agrinaspangan/ebitda-api/internal/middleware"
 	"agrinaspangan/ebitda-api/internal/models"
 	"agrinaspangan/ebitda-api/internal/passkey"
@@ -35,6 +36,7 @@ type Deps struct {
 	Selection     *kdkmp.SelectionService
 	Allocation    *kdkmp.AllocationService
 	TaskReports   *taskreport.DocumentService
+	Meetings      *meetingminutes.Service
 	SessionCookie string
 	SessionTTL    time.Duration
 	SessionSecure bool
@@ -51,6 +53,7 @@ func NewRouter(deps Deps) *gin.Engine {
 
 	router := gin.Default()
 	router.Use(middleware.CORS(deps.CORSOrigins))
+	router.Use(middleware.SecurityHeaders())
 
 	auth := &middleware.Auth{
 		DB:      deps.DB,
@@ -87,11 +90,7 @@ func NewRouter(deps Deps) *gin.Engine {
 			protected.GET("/users/:id/manager-sk-document", PreviewManagerSKDocumentHandler)
 
 			taskDashboard := protected.Group("")
-			taskDashboard.Use(middleware.RequireLevels(
-				models.RoleLevelStaff,
-				models.RoleLevelManager,
-				models.RoleLevelSuperadmin,
-			))
+			taskDashboard.Use(RequireKdkmpManager())
 			{
 				taskDashboard.GET("/task-dashboard", TaskDashboardHandler)
 				taskDashboard.GET("/task-dashboard/completed", TaskHistoryHandler)
@@ -113,6 +112,22 @@ func NewRouter(deps Deps) *gin.Engine {
 				kdkmpDashboard.PUT("/kdkmp-dashboard/today", UpdateKdkmpDailyHandler)
 				kdkmpDashboard.PUT("/kdkmp-dashboard/today/task-selection", UpdateKdkmpTaskSelectionHandler)
 				kdkmpDashboard.PUT("/kdkmp-dashboard/today/operational-attendance", UpdateKdkmpOperationalAttendanceHandler)
+			}
+
+			meetingMinutes := protected.Group("/meeting-minutes")
+			meetingMinutes.Use(RequireKdkmpManager())
+			{
+				meetingMinutes.GET("", ListMeetingMinutesHandler)
+				meetingMinutes.POST("", CreateMeetingMinuteHandler)
+				meetingMinutes.GET("/action-items", ListMeetingActionItemsHandler)
+				meetingMinutes.PATCH("/action-items/:itemID", UpdateMeetingActionItemHandler)
+				meetingMinutes.GET("/:id", GetMeetingMinuteHandler)
+				meetingMinutes.PUT("/:id", UpdateMeetingMinuteHandler)
+				meetingMinutes.DELETE("/:id", DeleteMeetingMinuteHandler)
+				meetingMinutes.POST("/:id/attachments", AddMeetingMinuteAttachmentsHandler)
+				meetingMinutes.DELETE("/:id/attachments/:attachmentID", DeleteMeetingMinuteAttachmentHandler)
+				meetingMinutes.GET("/:id/attachments/:attachmentID/preview", PreviewMeetingMinuteAttachmentHandler)
+				meetingMinutes.GET("/:id/attachments/:attachmentID/download", DownloadMeetingMinuteAttachmentHandler)
 			}
 		}
 

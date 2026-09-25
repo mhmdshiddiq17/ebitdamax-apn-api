@@ -33,12 +33,12 @@ type saveOperationalAttendanceRequest struct {
 	OperationalAttendance map[string]int `json:"operational_attendance"`
 }
 
-// RequireKdkmpManager membatasi dashboard harian hanya untuk Manager KDKMP.
+// RequireKdkmpManager membatasi fitur KDKMP hanya untuk Manager KDKMP.
 func RequireKdkmpManager() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user := middleware.CurrentUser(c)
 		if user == nil || !user.IsKdkmpManager() {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"message": "Dashboard KDKMP hanya untuk Manager KDKMP"})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"message": "Fitur KDKMP hanya untuk Manager KDKMP"})
 			return
 		}
 		c.Next()

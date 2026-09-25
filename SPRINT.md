@@ -263,31 +263,83 @@ Durasi sprint: **2 minggu** · Metode: agile · Target utama:
 
 ---
 
-## Sprint 7 — Kolaborasi Manager (RENCANA)
+## Sprint 7 — Kolaborasi Manager ✅ (SELESAI)
 
 **Goal:** Manager dapat mengelola Meeting Minutes, attachment, dan Action Item
 miliknya melalui tabel meeting yang sudah ada.
 
 **Backlog:** S7-1 … S7-5.
 
+**Paket S7-1 sampai S7-3 (✅ selesai):**
+
+- API Manager KDKMP untuk list, detail, buat, ubah, dan hapus Meeting Minutes
+  miliknya sendiri dengan item sebagai snapshot berurutan.
+- Item menyimpan PIC, rentang tenggat, status legacy, dan urutan tanpa owner
+  selector atau akses Superadmin.
+- Lampiran memakai MinIO dengan upload terpisah, metadata tabel existing, dan
+  preview/download yang selalu memeriksa kepemilikan parent.
+
+**Paket S7-4 dan S7-5 (✅ selesai):**
+
+- Perubahan status Action Item disimpan atomik dengan `FOR UPDATE` dan riwayat
+  aktor; perubahan status melalui edit snapshot Meeting Minutes juga tercatat.
+- Halaman `/meeting-minutes` dan `/meeting-minutes/action-items` memakai SSR
+  untuk akses awal serta TanStack Query untuk mutasi/filter tanpa dependensi baru.
+- Navigasi dan endpoint hanya tersedia untuk Manager KDKMP; Superadmin dan
+  Manager Wilayah tidak menerima menu maupun akses endpoint tersebut.
+- Verifikasi runtime mencakup CRUD, preview lampiran, dua sumber perubahan
+  status, overdue, riwayat, dan boundary API/SSR; seluruh data QA dihapus.
+
 ---
 
-## Sprint 8 — Kesiapan Manager (RENCANA)
+## Sprint 8 — Kesiapan Manager ✅ (SELESAI)
 
 **Goal:** Tutup kesenjangan UX, navigasi, onboarding, dan validasi data
 operasional Manager KDKMP sebelum cutover.
 
-**Backlog:** S8-1 … S8-4. Integrasi LMS, Lumbung, dan Lark tetap `blocked`
-hingga kontrak eksternal tersedia dan tidak menjadi syarat selesai sprint.
+**Penyelesaian:**
+
+- **S8-1:** `GET /auth/me` menyediakan metadata SK hanya untuk Manager KDKMP;
+  profil memakai preview endpoint terotorisasi yang sudah ada.
+- **S8-2:** Dashboard memiliki tautan cepat Input/Tugas/Meeting. Tur versi 2
+  melintasi dashboard, matrix, input, task, dan meeting; manager lama melihat
+  pembaruan ini satu kali per browser tanpa perubahan schema.
+- **S8-3:** Tabel utama dapat digeser di layar kecil, pencarian meeting/action
+  item responsif, empty state memiliki tindakan pemulihan, dan error boundary
+  aplikasi menyediakan retry.
+- **S8-4:** Audit read-only mapping revenue/biaya didokumentasikan pada
+  `docs/S8_MAPPING_AUDIT.md`; alias legacy tidak dimasukkan ke formula.
+
+**Verifikasi:** `go test -mod=readonly ./...`, `go vet ./...`, `npm run lint`,
+dan `npm run build` lulus. API dan SSR diuji dengan akun Manager KDKMP serta
+Superadmin; browser automation tidak tersedia pada lingkungan kerja.
+
+Integrasi LMS, Lumbung, dan Lark tetap `blocked` hingga kontrak eksternal
+tersedia dan tidak menjadi syarat selesai sprint.
 
 ---
 
-## Sprint 9 — Paritas & Cutover Manager (RENCANA)
+## Sprint 9 — Paritas & Cutover Manager (PAKET 1–3 SELESAI)
 
 **Goal:** Audit paritas alur Manager KDKMP, migrasi data tabel in-scope,
 hardening, backup/rollback, dan cutover.
 
-**Backlog:** S9-1 … S9-5.
+**Penyelesaian paket 1–3:**
+
+- **S9-1:** Audit route, halaman, dan gate ada pada
+  `docs/S9_PARITY_AUDIT.md`. Endpoint task yang sebelumnya masih memakai gate
+  level umum kini hanya untuk Manager KDKMP; menu Manager Wilayah diselaraskan.
+- **S9-2:** `cmd/migrate-legacy-kdkmp` menyediakan preflight read-only dan
+  apply transaksional yang menolak target scope tidak kosong atau metadata
+  berkas tanpa objek. Hasil dan prosedur cutover ada pada
+  `docs/S9_DATA_MIGRATION.md`.
+- **S9-3:** Sesi diganti saat login, challenge 2FA, dan login passkey; ganti
+  kata sandi mencabut seluruh sesi aktif akun lalu membuat sesi baru. Header
+  keamanan dasar dipusatkan di middleware; pencarian Meeting dibatasi 255
+  karakter; audit indeks dan pagination didokumentasikan.
+
+**Tersisa:** S9-4 (backup, rebuild, rollback, cutover) dan S9-5
+(dokumentasi operasional serta monitoring) tidak dijalankan pada paket ini.
 
 ---
 

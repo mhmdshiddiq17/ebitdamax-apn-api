@@ -65,3 +65,35 @@ func TestManagerExpiry(t *testing.T) {
 		t.Fatalf("expected expired session to be not found, got %v", err)
 	}
 }
+
+func TestDestroyUserSessions(t *testing.T) {
+	mr := miniredis.RunT(t)
+	manager := NewManager(redis.NewClient(&redis.Options{Addr: mr.Addr()}), time.Hour)
+	ctx := context.Background()
+
+	first, err := manager.Create(ctx, 7)
+	if err != nil {
+		t.Fatalf("create first session: %v", err)
+	}
+	second, err := manager.Create(ctx, 7)
+	if err != nil {
+		t.Fatalf("create second session: %v", err)
+	}
+	other, err := manager.Create(ctx, 8)
+	if err != nil {
+		t.Fatalf("create other session: %v", err)
+	}
+
+	if err := manager.DestroyUserSessions(ctx, 7); err != nil {
+		t.Fatalf("destroy user sessions: %v", err)
+	}
+	if _, err := manager.Get(ctx, first); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("first session: %v", err)
+	}
+	if _, err := manager.Get(ctx, second); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("second session: %v", err)
+	}
+	if _, err := manager.Get(ctx, other); err != nil {
+		t.Fatalf("other user session: %v", err)
+	}
+}

@@ -40,9 +40,9 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | E3 | Master Data Pendukung Manager | S3 | done* |
 | E4 | Task Management Manager | S4 | done |
 | E5 | Dashboard Harian Manager KDKMP | S5 | done |
-| E7 | Kolaborasi Manager | S7 | todo |
-| E8 | Kesiapan Manager | S8 | todo |
-| E9 | Paritas & Cutover Manager | S9 | todo |
+| E7 | Kolaborasi Manager | S7 | done |
+| E8 | Kesiapan Manager | S8 | done |
+| E9 | Paritas & Cutover Manager | S9 | in_progress |
 
 `*` Epic selesai dengan item hold/skip yang tercatat di bagian status khusus.
 
@@ -108,28 +108,28 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 
 | ID | Story | Prioritas | Status |
 |---|---|---|---|
-| S7-1 | List/create/update/delete Meeting Minutes milik manager | P0 | todo |
-| S7-2 | Item meeting, urutan, PIC, tenggat, dan status | P0 | todo |
-| S7-3 | Attachment meeting pada MinIO beserta preview/download terotorisasi | P1 | todo |
-| S7-4 | Riwayat status dan halaman Action Items Manager | P1 | todo |
-| S7-5 | Halaman web, navigasi, dan verifikasi owner/access boundary | P0 | todo |
+| S7-1 | List/create/update/delete Meeting Minutes milik manager | P0 | done |
+| S7-2 | Item meeting, urutan, PIC, tenggat, dan status | P0 | done |
+| S7-3 | Attachment meeting pada MinIO beserta preview/download terotorisasi | P1 | done |
+| S7-4 | Riwayat status dan halaman Action Items Manager | P1 | done |
+| S7-5 | Halaman web, navigasi, dan verifikasi owner/access boundary | P0 | done |
 
 ## Sprint 8 — Kesiapan Manager
 
 | ID | Story | Prioritas | Status |
 |---|---|---|---|
-| S8-1 | Tampilan dokumen SK Manager pada profil menggunakan endpoint yang sudah ada | P1 | todo |
-| S8-2 | Lengkapi navigasi dan onboarding untuk dashboard, task, matrix, dan meeting | P1 | todo |
-| S8-3 | Polish mobile, aksesibilitas, empty state, dan error state seluruh alur manager | P1 | todo |
-| S8-4 | Verifikasi read-only mapping task/field revenue dan biaya terhadap data produksi | P0 | todo |
+| S8-1 | Tampilan dokumen SK Manager pada profil menggunakan endpoint yang sudah ada | P1 | done |
+| S8-2 | Lengkapi navigasi dan onboarding untuk dashboard, task, matrix, dan meeting | P1 | done |
+| S8-3 | Polish mobile, aksesibilitas, empty state, dan error state seluruh alur manager | P1 | done |
+| S8-4 | Verifikasi read-only mapping task/field revenue dan biaya terhadap data produksi | P0 | done |
 
 ## Sprint 9 — Paritas & Cutover Manager
 
 | ID | Story | Prioritas | Status |
 |---|---|---|---|
-| S9-1 | Audit route, halaman, dan gate terhadap fitur Manager KDKMP legacy | P0 | todo |
-| S9-2 | Migrasi dan verifikasi data hanya untuk tabel in-scope yang sudah ada | P0 | todo |
-| S9-3 | Hardening session, akses, validasi, dan performance pass | P0 | todo |
+| S9-1 | Audit route, halaman, dan gate terhadap fitur Manager KDKMP legacy | P0 | done |
+| S9-2 | Migrasi dan verifikasi data hanya untuk tabel in-scope yang sudah ada | P0 | done |
+| S9-3 | Hardening session, akses, validasi, dan performance pass | P0 | done |
 | S9-4 | Rebuild database, backup, rollback plan, dan cutover | P0 | todo |
 | S9-5 | Dokumentasi operasional dan monitoring pasca-cutover | P1 | todo |
 

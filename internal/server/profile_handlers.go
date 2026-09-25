@@ -145,6 +145,14 @@ func UpdatePasswordHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Gagal menyimpan kata sandi"})
 		return
 	}
+	if err := AppDeps.Session.DestroyUserSessions(c.Request.Context(), user.ID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Kata sandi diperbarui, tetapi sesi lama tidak dapat dicabut"})
+		return
+	}
+	if err := replaceSession(c, user.ID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Kata sandi diperbarui, tetapi sesi baru gagal dibuat"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Kata sandi berhasil diperbarui"})
 }
