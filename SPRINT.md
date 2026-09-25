@@ -319,7 +319,7 @@ tersedia dan tidak menjadi syarat selesai sprint.
 
 ---
 
-## Sprint 9 — Paritas & Cutover Manager (PAKET 1–3 SELESAI)
+## Sprint 9 — Paritas & Cutover Manager ✅ (REHEARSAL LOKAL SELESAI)
 
 **Goal:** Audit paritas alur Manager KDKMP, migrasi data tabel in-scope,
 hardening, backup/rollback, dan cutover.
@@ -338,13 +338,54 @@ hardening, backup/rollback, dan cutover.
   keamanan dasar dipusatkan di middleware; pencarian Meeting dibatasi 255
   karakter; audit indeks dan pagination didokumentasikan.
 
-**Tersisa:** S9-4 (backup, rebuild, rollback, cutover) dan S9-5
-(dokumentasi operasional serta monitoring) tidak dijalankan pada paket ini.
+**Penyelesaian paket 4–5 (rehearsal lokal):**
+
+- **S9-4:** `scripts/s9-rehearsal.sh` hanya menerima database Docker
+  `ebitdamax_apn_rehearsal`; mode `--reset` membuat backup logical sebelum
+  rebuild. Migrator menolak target lain, menjalankan transaksi relasional
+  tanpa metadata berkas, lalu mengganti satu Manager lengkap menjadi akun QA
+  lokal. Rehearsal berhasil dibangun ulang dari backup pada 25 September 2026.
+- **S9-5:** Runbook, prosedur rollback, pemeriksaan layanan, dan bukti
+  verifikasi tersedia di `docs/S9_REHEARSAL_RUNBOOK.md`,
+  `docs/S9_OPERATIONS.md`, dan `docs/S9_REHEARSAL_REPORT.md`.
+
+**Batas penutupan:** Sprint ini selesai sebagai **rehearsal lokal** sesuai
+keputusan scope. Ini bukan clone penuh atau cutover produksi: legacy hanya
+dibaca, database refactor utama tidak disentuh, dan objek MinIO legacy tidak
+disalin. Cutover produksi memerlukan persetujuan baru serta salin dan validasi
+artefak MinIO terlebih dahulu.
 
 ---
 
-## Setelah Sprint Inti
+## Sprint 10 — Customer Insight Manager ✅
 
-- POS Revenue read-only dan Customer Analysis dikerjakan setelah Sprint 9.
-- Customer Analysis memerlukan parity migration baru untuk tabel
-  `customer_analyses`; migration tersebut tidak termasuk Sprint 7–9.
+**Goal:** Manager KDKMP mencatat dan mengelola hasil wawancara pelanggan
+secara mandiri.
+
+- **S10-1:** `migrations/00002_customer_analyses.sql` menambahkan tabel dan
+  indeks kepemilikan user; baseline rehearsal menerapkannya saat rebuild.
+- **S10-2:** API `GET/POST/PUT /customer-analyses` memakai gate Manager KDKMP
+  dan query owner. Validasi mengikuti enum, batas usia, serta batas teks
+  legacy.
+- **S10-3:** Halaman Customer Analysis menyediakan kartu responsif, detail,
+  tambah, dan edit. Riwayat legacy tidak diimpor; fitur dimulai dengan data
+  kosong sesuai keputusan produk.
+
+## Sprint 11 — Komunikasi Manager ✅
+
+**Goal:** Superadmin dapat mengirim pengumuman kepada Manager KDKMP, dan
+Manager dapat membaca serta menandai notifikasinya.
+
+- **S11-1:** `POST /announcements` hanya untuk Superadmin dan membuat
+  notifikasi seluruh Manager KDKMP dalam satu transaksi.
+- **S11-2:** `GET /notifications`, `PATCH /notifications/{id}/read`, dan
+  `PATCH /notifications/read-all` dibatasi identitas penerima; tabel baseline
+  `notifications` dipakai tanpa schema baru.
+- **S11-3:** Pengumuman Superadmin, halaman Notifikasi Manager, unread badge,
+  dan bell header aktif. Riwayat notifikasi legacy sengaja tidak dimigrasikan.
+
+## Sprint 12 — POS Revenue Read-only ⛔
+
+Sprint 12 belum dimulai. Ia memerlukan validasi URL, kredensial, format
+respons, serta pemetaan NIK/companyId dari API POS sebelum adapter Go dapat
+dibangun. Input pendapatan manual tidak dipakai sebagai pengganti.

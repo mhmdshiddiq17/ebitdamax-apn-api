@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -35,6 +36,15 @@ var scopedTables = []string{
 	"meeting_minute_items",
 	"meeting_minute_item_status_histories",
 	"meeting_minute_attachments",
+}
+
+const rehearsalDatabase = "ebitdamax_apn_rehearsal"
+
+type migrationOptions struct {
+	Rehearsal    bool
+	WithoutFiles bool
+	QAEmail      string
+	QAPassword   string
 }
 
 type sdmEntry struct {
@@ -99,9 +109,20 @@ type migrationPlan struct {
 
 func main() {
 	apply := flag.Bool("apply", false, "tulis data ke target yang masih kosong")
+	rehearsal := flag.Bool("rehearsal", false, "mode rehearsal lokal terisolasi")
+	withoutFiles := flag.Bool("without-files", false, "hapus metadata berkas legacy untuk rehearsal")
 	flag.Parse()
 
 	config.LoadEnv()
+	options := migrationOptions{
+		Rehearsal:    *rehearsal,
+		WithoutFiles: *withoutFiles,
+		QAEmail:      config.GetEnv("SEED_MANAGER_EMAIL", "manager@agrinas.test"),
+		QAPassword:   config.GetEnv("SEED_MANAGER_PASSWORD", "password123"),
+	}
+	if err := options.validate(config.GetEnv("DB_NAME", "postgres")); err != nil {
+		log.Fatal(err)
+	}
 	source, closeSource, err := connectLegacy()
 	if err != nil {
 		log.Fatal(err)
@@ -116,15 +137,37 @@ func main() {
 	if !*apply {
 		return
 	}
-	if plan.Files.Total() != 0 {
+	if options.WithoutFiles {
+		stripFileReferences(plan)
+	} else if plan.Files.Total() != 0 {
 		log.Fatal("apply diblokir: salin seluruh objek SK, bukti task, dan lampiran meeting terlebih dahulu; metadata tanpa objek tidak boleh dipindahkan")
 	}
 
 	target := database.Connect()
-	if err := applyPlan(target, plan); err != nil {
+	if err := applyPlan(target, plan, options); err != nil {
 		log.Fatal(err)
 	}
+	if options.Rehearsal {
+		log.Println("rehearsal migrasi Manager KDKMP selesai tanpa berkas legacy")
+		return
+	}
 	log.Println("migrasi Manager KDKMP selesai")
+}
+
+func (options migrationOptions) validate(databaseName string) error {
+	if options.Rehearsal != options.WithoutFiles {
+		return errors.New("--rehearsal dan --without-files harus dipakai bersamaan")
+	}
+	if !options.Rehearsal {
+		return nil
+	}
+	if databaseName != rehearsalDatabase {
+		return fmt.Errorf("rehearsal hanya boleh memakai DB_NAME=%s", rehearsalDatabase)
+	}
+	if strings.TrimSpace(options.QAEmail) == "" || options.QAPassword == "" {
+		return errors.New("akun QA rehearsal belum dikonfigurasi")
+	}
+	return nil
 }
 
 func connectLegacy() (*gorm.DB, func(), error) {
@@ -270,7 +313,30 @@ func findFileReferences(plan *migrationPlan) fileReferences {
 	return refs
 }
 
-func applyPlan(target *gorm.DB, plan *migrationPlan) error {
+func stripFileReferences(plan *migrationPlan) {
+	fields := make(map[int64]models.TaskAdditionalField, len(plan.Fields))
+	for _, field := range plan.Fields {
+		fields[field.ID] = field
+	}
+	for index := range plan.Managers {
+		plan.Managers[index].ManagerSKDocument = nil
+	}
+	for index := range plan.Reports {
+		plan.Reports[index].StartedPhoto = nil
+		plan.Reports[index].FinishedPhoto = nil
+		plan.Reports[index].StartedDocuments = nil
+		plan.Reports[index].FinishedDocuments = nil
+	}
+	for index := range plan.Values {
+		field, ok := fields[plan.Values[index].TaskAdditionalFieldID]
+		if ok && field.InputType == "file" {
+			plan.Values[index].Value = nil
+		}
+	}
+	plan.Attachments = nil
+}
+
+func applyPlan(target *gorm.DB, plan *migrationPlan, options migrationOptions) error {
 	if err := verifyTargetReady(target); err != nil {
 		return err
 	}
@@ -322,6 +388,11 @@ func applyPlan(target *gorm.DB, plan *migrationPlan) error {
 		}
 		if err := copyItemHistories(tx, plan.Histories, itemMap, userMap); err != nil {
 			return err
+		}
+		if options.Rehearsal {
+			if err := prepareRehearsalQA(tx, plan, userMap, options); err != nil {
+				return err
+			}
 		}
 		return verifyTargetCounts(tx, plan)
 	})
@@ -625,6 +696,133 @@ func copyItemHistories(tx *gorm.DB, source []models.MeetingMinuteItemStatusHisto
 		}
 	}
 	return nil
+}
+
+func prepareRehearsalQA(tx *gorm.DB, plan *migrationPlan, userMap map[int64]int64, options migrationOptions) error {
+	manager, err := rehearsalManager(plan)
+	if err != nil {
+		return err
+	}
+	targetID, ok := userMap[manager.ID]
+	if !ok {
+		return fmt.Errorf("akun QA tidak menemukan Manager sumber %d", manager.ID)
+	}
+	email := strings.ToLower(strings.TrimSpace(options.QAEmail))
+	var existing int64
+	if err := tx.Model(&models.User{}).Where("LOWER(email) = ? AND id <> ?", email, targetID).Count(&existing).Error; err != nil {
+		return err
+	}
+	if existing != 0 {
+		return fmt.Errorf("email akun QA %s sudah dipakai", email)
+	}
+	username, err := availableRehearsalUsername(tx)
+	if err != nil {
+		return err
+	}
+	password, err := bcrypt.GenerateFromPassword([]byte(options.QAPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("membuat kata sandi akun QA: %w", err)
+	}
+	now := time.Now()
+	return tx.Model(&models.User{}).Where("id = ?", targetID).Updates(map[string]any{
+		"name":                      "QA Manager Rehearsal",
+		"username":                  username,
+		"email":                     email,
+		"email_verified_at":         now,
+		"password":                  string(password),
+		"two_factor_secret":         nil,
+		"two_factor_recovery_codes": nil,
+		"two_factor_confirmed_at":   nil,
+		"has_completed_onboarding":  true,
+	}).Error
+}
+
+func rehearsalManager(plan *migrationPlan) (*models.User, error) {
+	owners := make(map[int64]*models.User, len(plan.Managers))
+	stats := make(map[int64]rehearsalManagerStats, len(plan.Managers))
+	for index := range plan.Managers {
+		manager := &plan.Managers[index]
+		if manager.SDMKdkmpEntryID != nil {
+			owners[*manager.SDMKdkmpEntryID] = manager
+		}
+	}
+	for _, entry := range plan.DailyEntries {
+		manager, ok := owners[entry.SDMKdkmpEntryID]
+		if !ok {
+			continue
+		}
+		stat := stats[manager.ID]
+		stat.hasDashboard = true
+		if entry.ReportDate.After(stat.latestDashboard) {
+			stat.latestDashboard = entry.ReportDate
+		}
+		stats[manager.ID] = stat
+	}
+	for _, report := range plan.Reports {
+		stat := stats[report.UserID]
+		stat.hasReport = true
+		stats[report.UserID] = stat
+	}
+	for _, meeting := range plan.Meetings {
+		if meeting.CreatedBy == nil {
+			continue
+		}
+		stat := stats[*meeting.CreatedBy]
+		stat.hasMeeting = true
+		stats[*meeting.CreatedBy] = stat
+	}
+
+	var selected *models.User
+	var selectedStat rehearsalManagerStats
+	for index := range plan.Managers {
+		manager := &plan.Managers[index]
+		stat := stats[manager.ID]
+		if selected == nil || stat.score() > selectedStat.score() || (stat.score() == selectedStat.score() && stat.latestDashboard.After(selectedStat.latestDashboard)) {
+			selected = manager
+			selectedStat = stat
+		}
+	}
+	if selected == nil || !selectedStat.hasDashboard {
+		return nil, errors.New("tidak ada Manager legacy dengan dashboard KDKMP untuk akun QA rehearsal")
+	}
+	return selected, nil
+}
+
+type rehearsalManagerStats struct {
+	hasDashboard    bool
+	hasReport       bool
+	hasMeeting      bool
+	latestDashboard time.Time
+}
+
+func (stats rehearsalManagerStats) score() int {
+	score := 0
+	if stats.hasDashboard {
+		score += 4
+	}
+	if stats.hasReport {
+		score += 2
+	}
+	if stats.hasMeeting {
+		score++
+	}
+	return score
+}
+
+func availableRehearsalUsername(tx *gorm.DB) (string, error) {
+	for suffix := 1; ; suffix++ {
+		candidate := "qa-manager-rehearsal"
+		if suffix > 1 {
+			candidate = fmt.Sprintf("%s-%d", candidate, suffix)
+		}
+		var count int64
+		if err := tx.Model(&models.User{}).Where("username = ?", candidate).Count(&count).Error; err != nil {
+			return "", err
+		}
+		if count == 0 {
+			return candidate, nil
+		}
+	}
 }
 
 func verifyTargetCounts(tx *gorm.DB, plan *migrationPlan) error {

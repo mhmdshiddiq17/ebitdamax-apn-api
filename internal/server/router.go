@@ -129,11 +129,29 @@ func NewRouter(deps Deps) *gin.Engine {
 				meetingMinutes.GET("/:id/attachments/:attachmentID/preview", PreviewMeetingMinuteAttachmentHandler)
 				meetingMinutes.GET("/:id/attachments/:attachmentID/download", DownloadMeetingMinuteAttachmentHandler)
 			}
+
+			customerAnalyses := protected.Group("/customer-analyses")
+			customerAnalyses.Use(RequireKdkmpManager())
+			{
+				customerAnalyses.GET("", ListCustomerAnalysesHandler)
+				customerAnalyses.POST("", CreateCustomerAnalysisHandler)
+				customerAnalyses.PUT("/:id", UpdateCustomerAnalysisHandler)
+			}
+
+			notifications := protected.Group("/notifications")
+			notifications.Use(RequireKdkmpManager())
+			{
+				notifications.GET("", ListNotificationsHandler)
+				notifications.PATCH("/read-all", MarkAllNotificationsReadHandler)
+				notifications.PATCH("/:id/read", MarkNotificationReadHandler)
+			}
 		}
 
 		admin := protected.Group("")
 		admin.Use(middleware.RequireLevels(models.RoleLevelSuperadmin))
 		{
+			admin.POST("/announcements", CreateAnnouncementHandler)
+
 			admin.GET("/roles", ListRolesHandler)
 			admin.POST("/roles", CreateRoleHandler)
 			admin.PUT("/roles/:id", UpdateRoleHandler)

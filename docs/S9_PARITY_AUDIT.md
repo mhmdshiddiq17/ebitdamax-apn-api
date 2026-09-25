@@ -13,6 +13,8 @@ Refactor ini sengaja hanya mencakup Manager KDKMP
 | Task harian, laporan, riwayat, dan berkas | `/task-dashboard`, `/tasks/*`, `/task-reports/*` | `/dashboard/tasks`, `/dashboard/tasks/completed` | Manager KDKMP |
 | Meeting Minutes, Action Items, dan lampiran | `/meeting-minutes/*` | `/meeting-minutes`, `/meeting-minutes/action-items` | Manager KDKMP + owner |
 | Profil, SK Manager, onboarding | `/profile`, `/users/:id/manager-sk-document`, `/users/complete-onboarding` | `/settings/profile` | autentikasi; SK dan onboarding memeriksa Manager KDKMP |
+| Customer Analysis | `/customer-analyses` | `/customer-analyses` | Manager KDKMP + owner |
+| Pengumuman dan notifikasi | `/announcements`, `/notifications` | `/announcements`, `/notifications` | Superadmin kirim; Manager KDKMP baca milik sendiri |
 
 Task Dashboard legacy masih memakai middleware level yang lebih luas. Refactor
 mempersempit seluruh endpoint task ke `RequireKdkmpManager`. Menu task tidak
@@ -21,9 +23,10 @@ kepemilikan; akun lain tidak dapat membaca atau mengubah data Manager KDKMP.
 
 ## Sengaja di luar paritas aktif
 
-- POS Revenue dan Customer Analysis: `deferred` hingga sprint inti selesai.
-- Monitoring regional/superadmin, APN corporate, notifikasi, import, peta,
-  LMS, Lumbung Chat, dan SSO Lark: bukan fitur baru Manager KDKMP atau masih
+- POS Revenue: `blocked` hingga kontrak API eksternal tervalidasi.
+- Monitoring regional/superadmin, APN corporate, import, dan peta bukan alur
+  navigasi Manager KDKMP aktif.
+- LMS dan Lumbung Chat dihentikan karena tidak lagi digunakan; SSO Lark masih
   menunggu kontrak eksternal.
 - Plan EBITDA Matrix: dibatalkan dan tidak diaudit sebagai fitur aktif.
 

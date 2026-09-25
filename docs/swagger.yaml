@@ -16,6 +16,13 @@ definitions:
       show_when:
         type: string
     type: object
+  server.announcementPayload:
+    properties:
+      message:
+        type: string
+      title:
+        type: string
+    type: object
   server.costPayload:
     properties:
       machine:
@@ -26,6 +33,25 @@ definitions:
         type: integer
       method:
         type: integer
+    type: object
+  server.customerAnalysisPayload:
+    properties:
+      age:
+        type: integer
+      full_name:
+        type: string
+      gender:
+        type: string
+      interview_purpose:
+        type: string
+      occupation_other:
+        type: string
+      occupation_role:
+        type: string
+      sentiment:
+        type: integer
+      summary:
+        type: string
     type: object
   server.loginRequest:
     properties:
@@ -238,6 +264,48 @@ info:
   title: EBITDA Max APN API
   version: "1.0"
 paths:
+  /api/v1/announcements:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Judul dan pesan pengumuman
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.announcementPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Kirim pengumuman kepada seluruh Manager KDKMP
+      tags:
+      - Announcements
   /api/v1/auth/login:
     post:
       consumes:
@@ -410,6 +478,127 @@ paths:
       summary: Verifikasi 2FA saat login
       tags:
       - Auth
+  /api/v1/customer-analyses:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Daftar Customer Analysis milik Manager KDKMP
+      tags:
+      - Customer Analysis
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Data narasumber
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.customerAnalysisPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Buat Customer Analysis milik Manager KDKMP
+      tags:
+      - Customer Analysis
+  /api/v1/customer-analyses/{id}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID Customer Analysis
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Data narasumber
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.customerAnalysisPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Perbarui Customer Analysis milik Manager KDKMP
+      tags:
+      - Customer Analysis
   /api/v1/kdkmp-dashboard:
     get:
       description: Metrik, financial matrix, dan riwayat harian Manager KDKMP.
@@ -1104,6 +1293,105 @@ paths:
       summary: Perbarui status Action Item milik Manager KDKMP
       tags:
       - Meeting Minutes
+  /api/v1/notifications:
+    get:
+      parameters:
+      - description: Maksimal 100, default 100
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Daftar notifikasi Manager KDKMP
+      tags:
+      - Notifications
+  /api/v1/notifications/{id}/read:
+    patch:
+      parameters:
+      - description: ID notifikasi
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Tandai satu notifikasi Manager KDKMP sebagai dibaca
+      tags:
+      - Notifications
+  /api/v1/notifications/read-all:
+    patch:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Tandai seluruh notifikasi Manager KDKMP sebagai dibaca
+      tags:
+      - Notifications
   /api/v1/passkeys:
     get:
       description: Menampilkan passkey milik user yang sedang login.

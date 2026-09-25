@@ -42,7 +42,10 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | E5 | Dashboard Harian Manager KDKMP | S5 | done |
 | E7 | Kolaborasi Manager | S7 | done |
 | E8 | Kesiapan Manager | S8 | done |
-| E9 | Paritas & Cutover Manager | S9 | in_progress |
+| E9 | Paritas & Cutover Manager | S9 | done |
+| E10 | Customer Insight Manager | S10 | done |
+| E11 | Komunikasi Manager | S11 | done |
+| E12 | POS Revenue Manager | S12 | blocked |
 
 `*` Epic selesai dengan item hold/skip yang tercatat di bagian status khusus.
 
@@ -72,8 +75,8 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | S2-1 | 2FA TOTP dan recovery code | P0 | done |
 | S2-2 | Backend passkeys/WebAuthn | P1 | done |
 | S2-3 | Onboarding Manager KDKMP dan pengaturan keamanan/tampilan | P1 | done |
-| S2-4 | Halaman frontend passkeys | P2 | hold (menunggu keputusan SSO Lark) |
-| S2-5 | Notifikasi in-app | P2 | skip (tidak dibutuhkan) |
+| S2-4 | Halaman frontend passkeys | P2 | skip (tidak diperlukan) |
+| S2-5 | Notifikasi in-app | P2 | done (diteruskan sebagai Sprint 11) |
 
 ## Sprint 3 — Master Data Pendukung Manager
 
@@ -130,20 +133,54 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | S9-1 | Audit route, halaman, dan gate terhadap fitur Manager KDKMP legacy | P0 | done |
 | S9-2 | Migrasi dan verifikasi data hanya untuk tabel in-scope yang sudah ada | P0 | done |
 | S9-3 | Hardening session, akses, validasi, dan performance pass | P0 | done |
-| S9-4 | Rebuild database, backup, rollback plan, dan cutover | P0 | todo |
-| S9-5 | Dokumentasi operasional dan monitoring pasca-cutover | P1 | todo |
+| S9-4 | Rebuild database, backup, rollback plan, dan cutover | P0 | done (rehearsal lokal; bukan cutover produksi) |
+| S9-5 | Dokumentasi operasional dan monitoring pasca-cutover | P1 | done |
+
+> Sprint 9 ditutup untuk scope rehearsal lokal yang disetujui. Cutover
+> produksi tetap memerlukan persetujuan baru dan salin/validasi artefak MinIO
+> legacy.
+
+## Sprint 10 — Customer Insight Manager
+
+| ID | Story | Prioritas | Status |
+|---|---|---|---|
+| S10-1 | Migration dan model `customer_analyses` | P0 | done |
+| S10-2 | List/create/update Customer Analysis dengan owner gate Manager KDKMP | P0 | done |
+| S10-3 | Halaman responsif Customer Analysis, detail, tambah, dan edit | P1 | done |
+
+> Data Customer Analysis dimulai kosong sesuai keputusan produk; riwayat legacy
+> tidak dimigrasikan.
+
+## Sprint 11 — Komunikasi Manager
+
+| ID | Story | Prioritas | Status |
+|---|---|---|---|
+| S11-1 | Composer Pengumuman Superadmin kepada seluruh Manager KDKMP | P0 | done |
+| S11-2 | Notifikasi Manager: list, unread count, tandai satu/semua | P0 | done |
+| S11-3 | Halaman notifikasi dan bell header Manager | P1 | done |
+
+> Riwayat notifikasi legacy tidak dimigrasikan; hanya pengumuman baru refactor
+> yang tampil. Pengumuman dibatasi kepada Manager KDKMP, bukan seluruh role.
+
+## Sprint 12 — POS Revenue Read-only
+
+| ID | Story | Prioritas | Status |
+|---|---|---|---|
+| S12-1 | Validasi kontrak POS, kredensial, dan pemetaan NIK/companyId | P0 | blocked |
+| S12-2 | Adapter Go dan endpoint read-only pendapatan POS KDKMP | P0 | blocked |
+| S12-3 | Tampilan dashboard dengan state sukses, belum dikonfigurasi, dan gagal | P1 | blocked |
+
+> Memerlukan kontrak API POS eksternal yang tervalidasi. Input pendapatan
+> manual tidak menjadi pengganti integrasi legacy.
 
 ## Blocked — Kontrak Eksternal Belum Tersedia
 
 | ID | Story | Prioritas | Status |
 |---|---|---|---|
-| B-1 | LMS KDKMP iframe untuk manager | P1 | blocked (URL, akses, dan kontrak sesi belum tersedia) |
-| B-2 | Lumbung Chat iframe | P2 | blocked (URL dan kontrak akses eksternal belum tersedia) |
+| B-1 | LMS KDKMP iframe untuk manager | P1 | skip (tidak lagi digunakan) |
+| B-2 | Lumbung Chat iframe | P2 | skip (tidak lagi digunakan) |
 | B-3 | SSO Lark | P1 | blocked (akses/API Lark dan parity kolom user belum tersedia) |
 
 ## Deferred — Setelah Seluruh Sprint Inti
 
-| ID | Story | Prioritas | Status |
-|---|---|---|---|
-| D-1 | POS Revenue read-only pada Dashboard KDKMP | P1 | deferred (arahan user: setelah seluruh sprint) |
-| D-2 | Customer Analysis Manager KDKMP | P1 | deferred (tabel `customer_analyses` belum ada; perlu parity migration setelah Sprint 9) |
+Tidak ada item deferred aktif.

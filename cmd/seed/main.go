@@ -51,12 +51,19 @@ func main() {
 			Pass:  config.GetEnv("SEED_SUPERADMIN_PASSWORD", "password123"),
 			Role:  models.RoleSlugSuperadmin,
 		},
-		{
+	}
+	if config.GetEnvBool("SEED_MANAGER_ENABLED", true) {
+		accounts = append(accounts, struct {
+			Name  string
+			Email string
+			Pass  string
+			Role  string
+		}{
 			Name:  "Manager KDKMP Contoh",
 			Email: config.GetEnv("SEED_MANAGER_EMAIL", "manager@agrinas.test"),
 			Pass:  config.GetEnv("SEED_MANAGER_PASSWORD", "password123"),
 			Role:  models.RoleSlugManager,
-		},
+		})
 	}
 
 	for _, account := range accounts {
@@ -74,7 +81,9 @@ func main() {
 	fmt.Println()
 	fmt.Println("seed selesai — kredensial development:")
 	fmt.Printf("  superadmin : %s / %s\n", config.GetEnv("SEED_SUPERADMIN_EMAIL", "superadmin@agrinas.test"), config.GetEnv("SEED_SUPERADMIN_PASSWORD", "password123"))
-	fmt.Printf("  manager    : %s / %s\n", config.GetEnv("SEED_MANAGER_EMAIL", "manager@agrinas.test"), config.GetEnv("SEED_MANAGER_PASSWORD", "password123"))
+	if config.GetEnvBool("SEED_MANAGER_ENABLED", true) {
+		fmt.Printf("  manager    : %s / %s\n", config.GetEnv("SEED_MANAGER_EMAIL", "manager@agrinas.test"), config.GetEnv("SEED_MANAGER_PASSWORD", "password123"))
+	}
 }
 
 func upsertRole(db *gorm.DB, role models.Role) (*models.Role, error) {

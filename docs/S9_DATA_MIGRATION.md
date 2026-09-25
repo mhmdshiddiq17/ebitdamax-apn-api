@@ -31,16 +31,16 @@ task, dan 1 lampiran meeting.
 Karena metadata tanpa objek akan menghasilkan tautan rusak, `--apply` ditolak
 selama referensi objek tersebut masih ada. Guard ini mencegah kehilangan data.
 
-## Prosedur cutover (Sprint 9-4)
+## Rehearsal Sprint 9-4
 
-1. Simpan backup source dan target, lalu salin/validasi seluruh objek MinIO
-   yang tercatat preflight.
-2. Pastikan seluruh tabel scope target kosong; akun/role seed boleh tetap ada.
-3. Jalankan kembali preflight dan cocokkan jumlahnya.
-4. Jalankan `go run ./cmd/migrate-legacy-kdkmp --apply` terhadap target
-   cutover yang sudah disetujui.
-5. Cocokkan jumlah target yang dicetak migrator, login satu Manager hasil
-   migrasi, lalu cek dashboard, task, dan meeting miliknya.
+Rehearsal memakai `bash scripts/s9-rehearsal.sh`, database khusus
+`ebitdamax_apn_rehearsal`, dan mode
+`go run ./cmd/migrate-legacy-kdkmp --apply --rehearsal --without-files`.
+Kedua flag tersebut wajib dipakai bersama dan ditolak untuk database lain.
 
-Penulisan target berjalan dalam satu transaksi. Jika relasi atau hitungan
-akhir tidak cocok, transaksi dibatalkan.
+Mode rehearsal membersihkan metadata file, memilih satu Manager hasil migrasi
+sebagai akun QA lokal, dan tetap menulis semua relasi non-file dalam satu
+transaksi. Runbook lengkap ada pada `docs/S9_REHEARSAL_RUNBOOK.md`.
+
+Cutover produksi tetap membutuhkan salin/validasi seluruh objek MinIO sebelum
+`--apply` normal dapat digunakan. Itu bukan bagian rehearsal ini.
