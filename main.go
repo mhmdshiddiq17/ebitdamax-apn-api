@@ -16,6 +16,7 @@ import (
 	"agrinaspangan/ebitda-api/internal/session"
 	"agrinaspangan/ebitda-api/internal/storage"
 	"agrinaspangan/ebitda-api/internal/taskreport"
+	"agrinaspangan/ebitda-api/internal/token"
 	"agrinaspangan/ebitda-api/internal/twofactor"
 )
 
@@ -26,17 +27,29 @@ import (
 // @schemes                   http
 // @securityDefinitions.apikey CookieAuth
 // @in                        cookie
-// @name                      ebitda_session
+// @name                      ebitda_access
+// @securityDefinitions.apikey BearerAuth
+// @in                        header
+// @name                      Authorization
+// @description               Isi dengan: Bearer {access_token}
 func main() {
 	config.LoadEnv()
 
 	redisClient := cache.Connect()
 	db := database.Connect()
 
-	sessionTTL := time.Duration(config.GetEnvInt("SESSION_TTL_HOURS", 168)) * time.Hour
-	sessionCookie := config.GetEnv("SESSION_COOKIE", "ebitda_session")
+	refreshTTL := time.Duration(config.GetEnvInt("REFRESH_TTL_HOURS", 168)) * time.Hour
+	accessCookie := config.GetEnv("ACCESS_COOKIE", "ebitda_access")
+	refreshCookie := config.GetEnv("REFRESH_COOKIE", "ebitda_refresh")
 	sessionSecure := config.GetEnv("APP_ENV", "local") == "production"
-	sessionManager := session.NewManager(redisClient, sessionTTL)
+	sessionManager := session.NewManager(redisClient, refreshTTL)
+	refreshStore := session.NewRefreshStore(redisClient, refreshTTL)
+
+	tokenService := token.NewService(
+		config.GetEnv("JWT_SECRET", "dev-jwt-secret-change-me"),
+		config.GetEnv("JWT_ISSUER", "ebitda-max-apn"),
+		time.Duration(config.GetEnvInt("JWT_ACCESS_TTL_MINUTES", 60))*time.Minute,
+	)
 
 	appKey := crypto.KeyFromSecret(config.GetEnv("APP_KEY", "dev-app-key-change-me"))
 
@@ -58,14 +71,16 @@ func main() {
 		Minio:         minioClient,
 		Files:         files,
 		Session:       sessionManager,
+		Refresh:       refreshStore,
+		Tokens:        tokenService,
 		TwoFactor:     twofactor.NewService(db, sessionManager, appKey, "EBITDA Max APN"),
 		Passkey:       passkeyService,
 		Selection:     kdkmp.NewSelectionService(db),
 		Allocation:    kdkmp.NewAllocationService(db),
 		TaskReports:   taskreport.NewDocumentService(files),
 		Meetings:      meetingminutes.NewService(db, files),
-		SessionCookie: sessionCookie,
-		SessionTTL:    sessionTTL,
+		AccessCookie:  accessCookie,
+		RefreshCookie: refreshCookie,
 		SessionSecure: sessionSecure,
 		CORSOrigins:   splitOrigins(config.GetEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")),
 	}

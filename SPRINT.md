@@ -389,3 +389,111 @@ Manager dapat membaca serta menandai notifikasinya.
 Sprint 12 belum dimulai. Ia memerlukan validasi URL, kredensial, format
 respons, serta pemetaan NIK/companyId dari API POS sebelum adapter Go dapat
 dibangun. Input pendapatan manual tidak dipakai sebagai pengganti.
+
+---
+
+## Sprint 13 — Auth Token (JWT) ✅ (SELESAI)
+
+**Goal:** Ganti session Redis berstate dengan JWT: access token stateless (cookie HttpOnly untuk web,
+`Authorization: Bearer` untuk API client/Swagger) + refresh token opaque yang dapat dicabut.
+
+**Keputusan (disetujui user):** hybrid cookie+Bearer · access **1 jam** · refresh **7 hari rotating** ·
+revoke refresh saja (tanpa denylist access) · proxy Next verifikasi signature+exp · flow Bearer di Swagger ·
+**switch langsung tanpa dual-read legacy** · tanpa perubahan skema DB (Redis + config saja).
+
+**Status per package:**
+- [x] **Pkg 1:** `internal/token` (HS256, claims sub/sid/jti/iss/iat/exp, leeway 60s) + env JWT + login/2FA/passkey/ganti-password menerbitkan access token + middleware verifikasi JWT (cookie & Bearer)
+- [x] **Pkg 2:** Refresh store (rotasi single-use, tombstones replay, index `user_refresh:{id}` revoke-all O(1)) + `/auth/refresh` + `/auth/logout-all` + auto-refresh transparan di middleware
+- [x] **Pkg 3:** `POST /auth/token` (+`/auth/token/verify` 2FA) untuk klien Bearer + Swagger
+- [x] **Pkg 4:** Web (proxy verifikasi Edge via Web Crypto, retry 401 sekali, E2E Playwright) + dokumen
+
+**Catatan teknis Pkg 1:**
+- Cookie baru `ebitda_access` (JWT, HttpOnly, SameSite=Lax, Secure saat production); `ebitda_refresh` menyusul di Pkg 2
+- Middleware memverifikasi signature+issuer+exp (stateless, tanpa Redis) lalu tetap memuat user dari DB agar role/permission selalu segar
+- Session manager lama dirampingkan (hanya menyimpan state sementara 2FA/passkey); `DestroyUserSessions` lama dihapus — pencabutan sesi lain saat ganti password **sementara nonaktif** dan akan kembali di Pkg 2 via index refresh O(1)
+- Test: `internal/token` (6 kasus: valid, expired, tamper, secret salah, alg salah, issuer salah) + test hardening server diadaptasi; E2E: login→cookie JWT (3 bagian), /auth/me (cookie & Bearer), tamper 401, expired 401 "Sesi sudah berakhir", logout clear cookie, web SSR tetap jalan (`/dashboard` → final 200)
+- Swagger: `CookieAuth` pindah ke `ebitda_access` + securityDefinition `BearerAuth` disiapkan untuk Pkg 3
+
+**Catatan teknis Pkg 2:**
+- `internal/session/refresh.go`: `RefreshStore` — key `refresh:{token}` (payload user/family/created_at, TTL 7 hari sliding), index `user_refresh:{userID}` (SET) untuk **revoke-all O(jumlah sesi user)**, tombstone `refresh_used:{token}` (TTL 10 menit) untuk deteksi replay
+- `Rotate` (single-use, hanya di endpoint eksplisit `/auth/refresh`): token lama dihapus + ditombstone → token baru family sama; replay token tertombstone → **seluruh sesi user dicabut** + pesan khusus
+- **Deviasi desain yang disengaja:** auto-refresh di middleware hanya `Get + Touch` (sliding TTL) **tanpa rotasi** — rotasi di middleware memicu false-positive replay saat halaman menembak banyak request paralel dengan access token yang sama-sama kedaluwarsa (dan Set-Cookie dari refresh sisi RSC tidak sampai ke browser). Rotasi/replay-detection tetap berjalan untuk klien yang memanggil `/auth/refresh` eksplisit
+- Cookie `ebitda_refresh` (HttpOnly, SameSite=Lax, Secure saat production) diterbitkan bersama access di login/2FA/passkey; `logout` mencabut refresh + clear kedua cookie; `logout-all` mencabut seluruh sesi user
+- Ganti password: `RevokeUser` mencabut semua refresh token lalu menerbitkan sesi baru untuk perangkat ini (fitur pencabutan sesi lain pulih dari Pkg 1)
+- Test unit refresh store (lifecycle, rotasi, replay+revoke-all, revoke user terisolasi, touch TTL) + test hardening server diperluas (2 cookie, family id terikat claims)
+- E2E: login 2 cookie & key Redis; auto-refresh middleware (access expired + refresh valid → 200 + access baru); `/auth/refresh` merotasi; replay → 401 + semua sesi dicabut; logout & logout-all mencabut refresh; ganti password mencabut sesi lain (kredensial dev direvert)
+
+**Catatan teknis Pkg 3:**
+- `POST /auth/token` (JSON): login klien non-browser → `{token_type: Bearer, access_token, expires_in, refresh_token}`; bila 2FA aktif → `202 {two_factor_required, challenge_token}`
+- `POST /auth/token/verify`: verifikasi TOTP/recovery code dengan challenge dari body (bukan cookie) → token pair; batas percobaan tetap 5 (429)
+- Logika kredensial diekstrak ke `findUserByCredentials` (dipakai login cookie & API); helper `issueTokenPair` (tanpa cookie) vs `issueAuthSession` (set cookie)
+- Swagger: securityDefinition `BearerAuth` + tombol Authorize; E2E: token, Bearer /auth/me, kredensial salah 401, refresh via body, logout via body, 2FA penuh (enable → 202 → kode salah 422 → TOTP 200 → recovery code 200 → disable via Bearer, state direvert)
+
+**Catatan teknis Pkg 4:**
+- `proxy.ts` memverifikasi HS256 (Web Crypto `crypto.subtle`), issuer, dan exp di Edge; token invalid → redirect + hapus cookie; **expired + refresh cookie ada → diloloskan** (API akan memperbarui, termasuk untuk RSC yang tidak bisa menulis cookie browser)
+- `apiFetch` retry sekali via `POST /auth/refresh` saat 401 (single-flight, dikecualikan untuk path `/auth/*`)
+- Env web baru: `JWT_SECRET` (server-only, harus sama dengan API; **di-inline saat build** oleh Edge runtime — set juga di environment build produksi)
+- E2E Playwright: login → dashboard; cookie di-tamper → redirect login; signature forged → redirect; access expired + refresh valid → halaman tetap tampil & `GET /auth/me` sisi klien memperbarui cookie access; logout UI → redirect + refresh dicabut (401) + cookie bersih
+
+**Review Sprint 13 (✅ goal tercapai):**
+- Auth berpindah dari session Redis stateful ke JWT access (1 jam) + refresh (7 hari, revocable, rotasi single-use dengan deteksi replay) dengan dukungan cookie (web) dan Bearer (klien API/Swagger).
+- Pencabutan: logout, logout-all, dan ganti password (revoke-all O(1) via index `user_refresh:{id}`).
+- Verifikasi: 17+ skenario E2E API + 6 skenario Playwright; unit test token & refresh store hijau.
+
+**Retro Sprint 13:**
+- 🟢 Keep: deviasi desain didokumentasikan (rotasi hanya di endpoint eksplisit) mencegah false-positive replay pada request paralel; proteksi cookie HttpOnly + proxy verify berlapis
+- 🟡 Improve: `JWT_SECRET` web di-inline saat build Edge — tambahkan ke checklist deployment saat cutover S9
+- 🔵 Catatan: access token tidak dapat dicabut sebelum kedaluwarsa (≤1 jam) sesuai keputusan "revoke refresh saja"; denylist `jti` dapat ditambahkan bila nanti dibutuhkan
+
+**Catatan teknis Pkg 5 (Addendum — unifikasi login & token):**
+- Arahan user: "login adalah momen mendapatkan token" — endpoint ganda dihapus.
+- `POST /auth/login` kini mengembalikan data user **+ `{token_type, access_token, expires_in, refresh_token}`** di body sekaligus menyetel cookie HttpOnly `ebitda_access`/`ebitda_refresh`; cabang 2FA mengembalikan `challenge_token` di body (cookie `ebitda_2fa` tetap).
+- `POST /auth/two-factor-challenge` menerima `challenge_token` dari body **atau fallback cookie**; sukses → token pair (body + cookie). `POST /auth/passkey/login` juga mengembalikan token pair di body.
+- **Breaking (aman, tanpa konsumen):** `POST /auth/token` & `POST /auth/token/verify` dihapus; `api_token_handlers.go` dihapus; helper baru `applyAuthCookies` + `authResponseWithTokens`.
+- Verifikasi: login (token body + 2 cookie, Bearer /me 200, kredensial salah 401, `/auth/token` 404), 2FA jalur body & cookie → token, recovery code via body, passkey login (virtual authenticator) → `access_token` di body + Bearer /me 200, web SSR login → dashboard 200; `go build/vet/test` + swagger (61 path) hijau.
+
+---
+
+## Sprint 14 — Monitoring Dashboard KDKMP (SELESAI)
+
+**Goal:** Superadmin & manager wilayah dapat memonitor seluruh manager KDKMP lewat hierarki wilayah
+("pohon EBITDA"): drill-down nasional → provinsi → kabupaten → kecamatan → desa, ringkasan revenue/gap,
+chart bulanan, tabel rincian harian, dan detail task per KDKMP.
+
+**Keputusan (disetujui user):** parity pola lama · akses superadmin (nasional) + manager-wilayah (scoped,
+locked filters per-field) · tanpa perubahan skema DB.
+
+**Status per package:**
+- [x] **Pkg 1:** Regional access + konsolidasi — `internal/kdkmp/regional.go` (ManagedKdkmpQuery, AccessibleManagedKdkmpQuery, RegionOptions/AllRegionOptions, FilterContext + locked filters + scope label) & `internal/kdkmp/consolidation.go` (ConsolidateEntries per level, natural sort, gap)
+- [x] **Pkg 2:** Bulk metrics (`MetricsForUsers`) + monthly financial matrix (titik harian + kumulatif)
+- [x] **Pkg 3:** Endpoint `GET /admin/kdkmp-dashboard` + halaman monitoring
+- [x] **Pkg 4:** Detail task per KDKMP/tanggal + tombol "Lihat Task"
+
+**Catatan teknis Pkg 1:**
+- `access.go` di-refactor memakai `accessibleScopeConditions` bersama (dipakai juga oleh CanViewTaskReport) — menghapus duplikasi logika scope
+- Kontrak disamakan dengan aplikasi lama: key/label per level (national→village), `plan/actual/gap` nullable (null bila tidak ada nilai numerik), `complete_kdkmp` = jumlah record harian pada tanggal, metadata wilayah dari entry pertama grup, urutan natural case-insensitive (fungsi `naturalLess` sendiri, tanpa dependensi baru)
+- Filter wilayah exact-match (`regionFilterConditions`), locked filter hanya bila 1 nilai unik (mirror `filterContext`)
+- Test: 8 unit test baru (locked filters, scope label, kondisi scope akses, kondisi filter wilayah, konsolidasi nasional/provinsi, gap null, natural sort) — `go test ./...` 11 paket hijau
+- Catatan: verifikasi perakitan query GORM dilakukan di E2E Pkg 3 (DryRun GORM postgres tetap butuh koneksi), fragmen SQL sudah teruji murni
+
+**Catatan teknis Pkg 2:**
+- `internal/kdkmp/metrics.go` (baru): `MetricsForUsers(ctx, db, userIDs, date)` — satu query user+role, satu query task per role (`tasksByRoleForRoles`, dipakai juga monthly matrix), satu query pilihan task per entry (`DailySelectedTaskIDsByKdkmpEntryAndDate`), satu query laporan selesai, satu query once-completed, satu query nilai expense/revenue; `computeMetrics` murni untuk matematika (durasi, completion, compliance, format) — single `MetricsForUser` kini wrapper bulk (perilaku lama dipertahankan, `dailyRevenueAndCost` dihapus)
+- `internal/kdkmp/monthly_matrix.go` (baru): `MonthlyFinancialMatrixForEntry` (manager = user pertama per entry, `has_data` false bila tidak ada) — parity `KdkmpMonthlyFinancialMatrixService`: task eksekusi = wajib/terpilih per tanggal, fixed cost default bila tidak semua task terkonfigurasi, actual cost hanya bila durasi aktual > 0 (+ overage variable cost record), revenue dari record harian, kumulatif running sum di-round per titik; helper murni `datesBetween`, `monthlyExecutionTasks`, `monthlyFixedCost`, `monthlyCosts`
+- `selection.go`: key pilihan per entry+tanggal diekstrak ke `entryDateKey` (dipakai bersama metrik)
+- Test: 8 subtest baru (`metrics_test.go`, `monthly_matrix_test.go`) — `go test ./...` 14 paket hijau; verifikasi orkestrasi query menyusul di E2E Pkg 3
+
+**Catatan teknis Pkg 3:**
+- Endpoint `GET /api/v1/admin/kdkmp-dashboard` (`internal/server/kdkmp_monitoring_handlers.go`): middleware baru `RequireMonitoringAccess` (superadmin + manager wilayah saja — manager KDKMP biasa 403, berbeda dari policy lama yang juga mengizinkan manager/ebitda_kdkmp, sesuai keputusan sprint); validasi 422 (bulan ≤ bulan berjalan, status/level dikenal, detail_date ≤ hari ini, panjang filter ≤255); kontrak mirror lama: `entries` (paginated 25 + search/status), `summary` (total/complete/not_filled/requires_review), `filters` (+ locked region merge), `region_options`, `regional_access`, `consolidation`, `selected_kdkmp` (otomatis saat desa terfilter/terkunci), `monthly_financial_matrix`; transformEntry parity (8 kolom harian, `variable_cost` dari `plan_cost`, margin & scoring dihitung ulang dari record + metrik)
+- Swagger di-regenerate (`swag init -g main.go -o docs --parseDependency --parseInternal`)
+- Web: halaman `/admin/kdkmp-dashboard` (server fetch + react-query, pola users-table) — `src/components/kdkmp-monitoring/monitoring-dashboard.tsx` (ringkasan, pohon EBITDA breadcrumb + kartu wilayah, filter wilayah terkunci, tabel 8 kolom + status + paginasi) & `monthly-financial-matrix-chart.tsx` (recharts, token chart, klik tanggal + select tanggal aksesibel); tipe di `src/types/kdkmp-monitoring.ts`; menu sidebar "Monitoring KDKMP" → ready
+- Kolom "Aksi / Lihat Task" sengaja belum ada (Pkg 4)
+- E2E: superadmin (nasional → provinsi → kabupaten → kecamatan → desa, chart 26 titik, klik tanggal 23 Sep → tabel + badge "Lengkap"/"Review Plan Revenue", filter status/search, paginasi) & manager wilayah (scope "Wilayah penugasan", 4 filter terkunci, level dipaksa provinsi, chart otomatis) & manager KDKMP (redirect keluar); validasi API via curl (422 semua kasus); light/dark mode + 360px dicek; console browser bersih
+- Test: 7 subtest baru `kdkmp_monitoring_handlers_test.go` (parse params + helper, tanpa DB) — `go test ./...` 14 paket hijau; build web hijau
+- Catatan: kunjungan dashboard manager saat E2E memicu `SyncDailyMetrics` (perilaku normal aplikasi) sehingga record 26 Sep ter-update (scoring 2.5%, durasi 1 menit)
+
+**Catatan teknis Pkg 4:**
+- Endpoint `GET /api/v1/admin/kdkmp-dashboard/:entryID/tasks/:date` (`internal/server/kdkmp_monitoring_task_handlers.go`): validasi tanggal (422), entry harus dalam cakupan akses (404), laporan = milik manager entry, status completed, `period_key = date OR finished_at/started_at dalam rentang hari bisnis`, urut `finished_at DESC` (parity lama); payload laporan: foto (start/finish), dokumen (index per fase), nilai field tambahan (sortir `show_when, sort_order, id` — "finish" mendahului "start" sesuai sortBy lama), task + kategori + roles
+- **Perubahan rute berkas**: 6 endpoint `task-reports/{id}/photos|documents|additional-fields/.../preview|download` dipindah dari grup `RequireKdkmpManager` ke grup authenticated biasa — otorisasi per laporan tetap via `CanViewTaskReport` (manager pemilik, manager wilayah dalam cakupan, superadmin); ini juga membuka akses berkas untuk superadmin/manager wilayah
+- Web: halaman `/admin/kdkmp-dashboard/[entryID]/tasks/[date]` (server fetch, 404→notFound, 403→redirect) + `src/components/kdkmp-monitoring/task-reports-view.tsx` (tabel + dialog detail: waktu, foto dengan preview/unduh, data laporan termasuk berkas, dokumen); tombol "Lihat Task" di tabel monitoring (disabled tanpa manager; toast "Task belum selesai semua atau belum ada." bila completion < 100; dibuka di tab baru agar state drill-down monitoring tidak hilang — deviasi kecil dari lama yang same-tab)
+- E2E: matriks otorisasi berkas diuji nyata dengan fixture sementara (entry Papua + manager + manager wilayah Papua + laporan berfoto via API): superadmin/JT MW/pemilik → **200 image/jpeg** (160B) + header attachment; Papua MW & manager entry lain → **403**; entry di luar cakupan → 404; tasks endpoint superadmin/JT MW → 200, Papua MW → 404, manager KDKMP → 403 (middleware); UI: halaman detail task render 2 laporan, dialog memuat 2 foto (naturalWidth > 0), 2 nilai field, empty state dokumen; toast guard "Lihat Task" terverifikasi; console bersih. Seluruh fixture E2E dihapus (users/entry/report/MinIO object/attendance record) — DB kembali ke 2 user/1 entry/62 report
+- Test: 5 unit test baru `kdkmp_monitoring_task_handlers_test.go` (payload foto/dokumen/nilai/file, label fase) — `go test ./...` 14 paket hijau; build web hijau; swagger di-regenerate

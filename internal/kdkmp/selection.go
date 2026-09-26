@@ -43,6 +43,11 @@ func (s *SelectionService) DailySelectedTaskIDsForUser(ctx context.Context, user
 	return entry.SelectedTaskIDs, nil
 }
 
+// entryDateKey membuat key pilihan task per entry & tanggal ("entryID|YYYY-MM-DD").
+func entryDateKey(entryID int64, date time.Time) string {
+	return fmt.Sprintf("%d|%s", entryID, DateString(date))
+}
+
 // InProgressTaskIDsForUser mengambil ID task opsional yang sedang dikerjakan.
 func (s *SelectionService) InProgressTaskIDsForUser(ctx context.Context, user *models.User) ([]int64, error) {
 	var ids []int64
@@ -203,7 +208,7 @@ func (s *SelectionService) DailySelectedTaskIDsByKdkmpEntryAndDate(
 	}
 
 	for _, item := range rows {
-		key := fmt.Sprintf("%d|%s", item.SDMKdkmpEntryID, item.ReportDate.Format("2006-01-02"))
+		key := entryDateKey(item.SDMKdkmpEntryID, item.ReportDate)
 		set := make(map[int64]bool, len(item.SelectedTaskIDs))
 		for _, taskID := range item.SelectedTaskIDs {
 			set[taskID] = true

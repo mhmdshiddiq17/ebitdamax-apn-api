@@ -145,11 +145,12 @@ func UpdatePasswordHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Gagal menyimpan kata sandi"})
 		return
 	}
-	if err := AppDeps.Session.DestroyUserSessions(c.Request.Context(), user.ID); err != nil {
+	// Cabut seluruh refresh token lama, lalu terbitkan sesi baru untuk perangkat ini.
+	if err := AppDeps.Refresh.RevokeUser(c.Request.Context(), user.ID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Kata sandi diperbarui, tetapi sesi lama tidak dapat dicabut"})
 		return
 	}
-	if err := replaceSession(c, user.ID); err != nil {
+	if err := issueAuthSession(c, user.ID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Kata sandi diperbarui, tetapi sesi baru gagal dibuat"})
 		return
 	}

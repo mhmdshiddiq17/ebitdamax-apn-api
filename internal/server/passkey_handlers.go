@@ -197,7 +197,7 @@ func BeginPasskeyLoginHandler(c *gin.Context) {
 // FinishPasskeyLoginHandler godoc
 //
 //	@Summary      Selesaikan login passkey
-//	@Description  Memverifikasi respons assertion dan membuat session login.
+//	@Description  Memverifikasi respons assertion, membuat sesi login, lalu mengembalikan data user + token pair JWT (sekaligus cookie HttpOnly untuk browser).
 //	@Tags         Auth
 //	@Accept       json
 //	@Produce      json
@@ -227,14 +227,17 @@ func FinishPasskeyLoginHandler(c *gin.Context) {
 		return
 	}
 
-	if err := replaceSession(c, user.ID); err != nil {
+	accessToken, refreshToken, expiresAt, err := issueTokenPair(c.Request.Context(), user.ID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Gagal membuat sesi"})
 		return
 	}
 
+	applyAuthCookies(c, accessToken, refreshToken)
+
 	clearPasskeyCookie(c)
 
-	c.JSON(http.StatusOK, userResponse(user))
+	c.JSON(http.StatusOK, authResponseWithTokens(user, accessToken, refreshToken, expiresAt))
 }
 
 func setPasskeyCookie(c *gin.Context, token string, maxAge int) {

@@ -77,96 +77,6 @@ type FinancialMatrixPoint struct {
 	CumulativeActualCost  float64 `json:"cumulative_actual_cost"`
 }
 
-// MetricsForUser menghitung metrik task harian dari laporan yang selesai.
-func MetricsForUser(ctx context.Context, db *gorm.DB, user *models.User, businessDate time.Time) (Metrics, error) {
-	tasks, err := TasksForUser(ctx, db, user, businessDate, false)
-	if err != nil {
-		return Metrics{}, err
-	}
-
-	start, end := DayRange(businessDate)
-	taskIDs := make([]int64, 0, len(tasks))
-	taskByID := make(map[int64]models.Task, len(tasks))
-	for _, task := range tasks {
-		taskIDs = append(taskIDs, task.ID)
-		taskByID[task.ID] = task
-	}
-
-	completedOnce := make(map[int64]bool)
-	if len(taskIDs) > 0 {
-		var rows []struct{ TaskID int64 }
-		if err := db.WithContext(ctx).
-			Table("task_reports AS tr").
-			Select("tr.task_id").
-			Joins("JOIN tasks t ON t.id = tr.task_id").
-			Where("tr.user_id = ? AND tr.status = ? AND t.period = ? AND tr.finished_at < ?", user.ID, models.TaskReportCompleted, "once", start).
-			Scan(&rows).Error; err != nil {
-			return Metrics{}, err
-		}
-		for _, row := range rows {
-			completedOnce[row.TaskID] = true
-		}
-	}
-
-	expected := make(map[int64]models.Task, len(tasks))
-	for _, task := range tasks {
-		if task.Period == "once" && completedOnce[task.ID] {
-			continue
-		}
-		expected[task.ID] = task
-	}
-
-	var reports []models.TaskReport
-	if len(expected) > 0 {
-		expectedIDs := make([]int64, 0, len(expected))
-		for id := range expected {
-			expectedIDs = append(expectedIDs, id)
-		}
-		if err := db.WithContext(ctx).
-			Where("user_id = ? AND status = ? AND finished_at BETWEEN ? AND ?", user.ID, models.TaskReportCompleted, start, end).
-			Where("task_id IN ?", expectedIDs).
-			Find(&reports).Error; err != nil {
-			return Metrics{}, err
-		}
-	}
-
-	completed := make(map[int64]models.TaskReport, len(reports))
-	for _, report := range reports {
-		if _, exists := completed[report.TaskID]; !exists {
-			completed[report.TaskID] = report
-		}
-	}
-
-	totalDuration := 0
-	withThreshold := 0
-	withinThreshold := 0
-	for taskID, report := range completed {
-		if report.DurationMinutes != nil {
-			totalDuration += *report.DurationMinutes
-		}
-		task := taskByID[taskID]
-		if task.LowerThreshold != nil && task.UpperThreshold != nil {
-			withThreshold++
-			if report.DurationMinutes != nil && *report.DurationMinutes >= *task.LowerThreshold && *report.DurationMinutes <= *task.UpperThreshold {
-				withinThreshold++
-			}
-		}
-	}
-
-	actualCost, actualRevenue, err := dailyRevenueAndCost(ctx, db, user.ID, start, end, expected)
-	if err != nil {
-		return Metrics{}, err
-	}
-
-	return Metrics{
-		ActualRevenue:      formatNumber(actualRevenue),
-		ActualCost:         formatNumber(actualCost),
-		TotalDuration:      formatDuration(totalDuration),
-		CompletionRate:     percentage(len(completed), len(expected)),
-		TimeComplianceRate: percentage(withinThreshold, withThreshold),
-	}, nil
-}
-
 // ActualVariableCostForUser menghitung kelebihan variable cost 30 hari.
 func ActualVariableCostForUser(ctx context.Context, db *gorm.DB, userID int64, businessDate time.Time) (string, error) {
 	_, end := DayRange(businessDate)
@@ -401,42 +311,6 @@ func lockedDailyEntry(ctx context.Context, db *gorm.DB, user *models.User, busin
 		return nil, err
 	}
 	return &entry, nil
-}
-
-func dailyRevenueAndCost(ctx context.Context, db *gorm.DB, userID int64, start, end time.Time, expected map[int64]models.Task) (float64, float64, error) {
-	type row struct {
-		TaskID    int64
-		TaskName  string
-		FieldName string
-		Value     *string
-	}
-	var rows []row
-	if err := db.WithContext(ctx).
-		Table("task_report_values AS trv").
-		Select("tr.task_id, t.name AS task_name, taf.field_name, trv.value").
-		Joins("JOIN task_reports tr ON tr.id = trv.task_report_id").
-		Joins("JOIN tasks t ON t.id = tr.task_id").
-		Joins("JOIN task_additional_fields taf ON taf.id = trv.task_additional_field_id").
-		Where("tr.user_id = ? AND tr.status = ? AND tr.finished_at BETWEEN ? AND ?", userID, models.TaskReportCompleted, start, end).
-		Where("t.name IN ?", []string{expenseTaskName, revenueTaskName}).
-		Find(&rows).Error; err != nil {
-		return 0, 0, err
-	}
-	cost := 0.0
-	revenue := 0.0
-	for _, row := range rows {
-		value, ok := numericValue(derefString(row.Value))
-		if !ok {
-			continue
-		}
-		if row.TaskName == expenseTaskName && expected[row.TaskID].ID != 0 {
-			cost += value
-		}
-		if row.TaskName == revenueTaskName && row.FieldName == revenueFieldName {
-			revenue += value
-		}
-	}
-	return cost, revenue, nil
 }
 
 func expenseFieldTotals(ctx context.Context, db *gorm.DB, userID int64, start, end time.Time) (map[string]float64, error) {

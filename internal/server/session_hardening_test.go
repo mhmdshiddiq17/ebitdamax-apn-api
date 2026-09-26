@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,40 +13,59 @@ import (
 	"agrinaspangan/ebitda-api/internal/middleware"
 	"agrinaspangan/ebitda-api/internal/models"
 	"agrinaspangan/ebitda-api/internal/session"
+	"agrinaspangan/ebitda-api/internal/token"
 )
 
-func TestReplaceSessionInvalidatesPresentedSession(t *testing.T) {
+func TestIssueAuthSessionSetsValidToken(t *testing.T) {
+	tokenService := token.NewService("rahasia-test", "ebitda-max-apn", time.Hour)
 	miniRedis := miniredis.RunT(t)
-	manager := session.NewManager(redis.NewClient(&redis.Options{Addr: miniRedis.Addr()}), time.Hour)
-	oldSession, err := manager.Create(t.Context(), 7)
-	if err != nil {
-		t.Fatalf("create old session: %v", err)
-	}
+	refreshStore := session.NewRefreshStore(
+		redis.NewClient(&redis.Options{Addr: miniRedis.Addr()}),
+		time.Hour,
+	)
 
 	previousDeps := AppDeps
-	AppDeps = Deps{Session: manager, SessionCookie: "ebitda_session", SessionTTL: time.Hour}
+	AppDeps = Deps{
+		Tokens:        tokenService,
+		Refresh:       refreshStore,
+		AccessCookie:  "ebitda_access",
+		RefreshCookie: "ebitda_refresh",
+	}
 	t.Cleanup(func() { AppDeps = previousDeps })
 
 	recorder := httptest.NewRecorder()
 	context, _ := gin.CreateTestContext(recorder)
-	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", nil)
-	request.AddCookie(&http.Cookie{Name: "ebitda_session", Value: oldSession})
-	context.Request = request
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", nil)
+	context.Request = context.Request.WithContext(context.Request.Context())
 
-	if err := replaceSession(context, 7); err != nil {
-		t.Fatalf("replace session: %v", err)
-	}
-	if _, err := manager.Get(t.Context(), oldSession); !errors.Is(err, session.ErrNotFound) {
-		t.Fatalf("old session still valid: %v", err)
+	if err := issueAuthSession(context, 7); err != nil {
+		t.Fatalf("issue auth session: %v", err)
 	}
 
-	response := recorder.Result()
-	cookies := response.Cookies()
-	if len(cookies) != 1 || cookies[0].Value == "" || cookies[0].Value == oldSession {
-		t.Fatalf("replacement cookie = %#v", cookies)
+	cookies := recorder.Result().Cookies()
+	if len(cookies) != 2 {
+		t.Fatalf("expected 2 cookie (access + refresh), got %#v", cookies)
 	}
-	if data, err := manager.Get(t.Context(), cookies[0].Value); err != nil || data.UserID != 7 {
-		t.Fatalf("replacement session = %#v, %v", data, err)
+
+	byName := make(map[string]*http.Cookie)
+	for _, cookie := range cookies {
+		byName[cookie.Name] = cookie
+		if !cookie.HttpOnly || cookie.Value == "" {
+			t.Fatalf("cookie tidak sesuai: %#v", cookie)
+		}
+	}
+
+	claims, err := tokenService.Verify(byName["ebitda_access"].Value)
+	if err != nil {
+		t.Fatalf("token tidak valid: %v", err)
+	}
+	if claims.UserID != 7 || claims.SessionID == "" {
+		t.Fatalf("claims tidak sesuai: %+v", claims)
+	}
+
+	refreshData, err := refreshStore.Get(context.Request.Context(), byName["ebitda_refresh"].Value)
+	if err != nil || refreshData.UserID != 7 || refreshData.FamilyID != claims.SessionID {
+		t.Fatalf("refresh token tidak sesuai: %+v, %v", refreshData, err)
 	}
 }
 

@@ -1,8 +1,6 @@
 package server
 
 import (
-	"time"
-
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio-go/v7"
 	"github.com/redis/go-redis/v9"
@@ -19,6 +17,7 @@ import (
 	"agrinaspangan/ebitda-api/internal/session"
 	"agrinaspangan/ebitda-api/internal/storage"
 	"agrinaspangan/ebitda-api/internal/taskreport"
+	"agrinaspangan/ebitda-api/internal/token"
 	"agrinaspangan/ebitda-api/internal/twofactor"
 
 	_ "agrinaspangan/ebitda-api/docs"
@@ -31,14 +30,16 @@ type Deps struct {
 	Minio         *minio.Client
 	Files         *storage.Files
 	Session       *session.Manager
+	Refresh       *session.RefreshStore
+	Tokens        *token.Service
 	TwoFactor     *twofactor.Service
 	Passkey       *passkey.Service
 	Selection     *kdkmp.SelectionService
 	Allocation    *kdkmp.AllocationService
 	TaskReports   *taskreport.DocumentService
 	Meetings      *meetingminutes.Service
-	SessionCookie string
-	SessionTTL    time.Duration
+	AccessCookie  string
+	RefreshCookie string
 	SessionSecure bool
 	CORSOrigins   []string
 }
@@ -56,9 +57,12 @@ func NewRouter(deps Deps) *gin.Engine {
 	router.Use(middleware.SecurityHeaders())
 
 	auth := &middleware.Auth{
-		DB:      deps.DB,
-		Session: deps.Session,
-		Cookie:  deps.SessionCookie,
+		DB:            deps.DB,
+		Tokens:        deps.Tokens,
+		Refresh:       deps.Refresh,
+		Cookie:        deps.AccessCookie,
+		RefreshCookie: deps.RefreshCookie,
+		Secure:        deps.SessionSecure,
 	}
 
 	api := router.Group("/api/v1")
@@ -67,6 +71,7 @@ func NewRouter(deps Deps) *gin.Engine {
 
 		api.POST("/auth/login", LoginHandler)
 		api.POST("/auth/logout", LogoutHandler)
+		api.POST("/auth/refresh", RefreshHandler)
 		api.POST("/auth/two-factor-challenge", TwoFactorChallengeHandler)
 		api.POST("/auth/passkey/options", BeginPasskeyLoginHandler)
 		api.POST("/auth/passkey/login", FinishPasskeyLoginHandler)
@@ -75,6 +80,7 @@ func NewRouter(deps Deps) *gin.Engine {
 		protected.Use(auth.Required())
 		{
 			protected.GET("/auth/me", MeHandler)
+			protected.POST("/auth/logout-all", LogoutAllHandler)
 			protected.PATCH("/profile", UpdateProfileHandler)
 			protected.PUT("/profile/password", UpdatePasswordHandler)
 			protected.GET("/two-factor", TwoFactorStatusHandler)
@@ -89,6 +95,15 @@ func NewRouter(deps Deps) *gin.Engine {
 			protected.POST("/users/complete-onboarding", CompleteOnboardingHandler)
 			protected.GET("/users/:id/manager-sk-document", PreviewManagerSKDocumentHandler)
 
+			// Pratinjau/unduh berkas laporan task: otorisasi per laporan via CanViewTaskReport
+			// (manager pemilik, manager wilayah dalam cakupan, superadmin).
+			protected.GET("/task-reports/:id/documents/:phase/:index/preview", PreviewTaskReportDocumentHandler)
+			protected.GET("/task-reports/:id/documents/:phase/:index/download", DownloadTaskReportDocumentHandler)
+			protected.GET("/task-reports/:id/photos/:phase/preview", PreviewTaskReportPhotoHandler)
+			protected.GET("/task-reports/:id/photos/:phase/download", DownloadTaskReportPhotoHandler)
+			protected.GET("/task-reports/:id/additional-fields/:valueId/preview", PreviewTaskReportAdditionalFieldHandler)
+			protected.GET("/task-reports/:id/additional-fields/:valueId/download", DownloadTaskReportAdditionalFieldHandler)
+
 			taskDashboard := protected.Group("")
 			taskDashboard.Use(RequireKdkmpManager())
 			{
@@ -96,12 +111,6 @@ func NewRouter(deps Deps) *gin.Engine {
 				taskDashboard.GET("/task-dashboard/completed", TaskHistoryHandler)
 				taskDashboard.POST("/tasks/:id/start", StartTaskReportHandler)
 				taskDashboard.POST("/tasks/:id/finish", FinishTaskReportHandler)
-				taskDashboard.GET("/task-reports/:id/documents/:phase/:index/preview", PreviewTaskReportDocumentHandler)
-				taskDashboard.GET("/task-reports/:id/documents/:phase/:index/download", DownloadTaskReportDocumentHandler)
-				taskDashboard.GET("/task-reports/:id/photos/:phase/preview", PreviewTaskReportPhotoHandler)
-				taskDashboard.GET("/task-reports/:id/photos/:phase/download", DownloadTaskReportPhotoHandler)
-				taskDashboard.GET("/task-reports/:id/additional-fields/:valueId/preview", PreviewTaskReportAdditionalFieldHandler)
-				taskDashboard.GET("/task-reports/:id/additional-fields/:valueId/download", DownloadTaskReportAdditionalFieldHandler)
 			}
 
 			kdkmpDashboard := protected.Group("")
@@ -144,6 +153,13 @@ func NewRouter(deps Deps) *gin.Engine {
 				notifications.GET("", ListNotificationsHandler)
 				notifications.PATCH("/read-all", MarkAllNotificationsReadHandler)
 				notifications.PATCH("/:id/read", MarkNotificationReadHandler)
+			}
+
+			monitoring := protected.Group("")
+			monitoring.Use(RequireMonitoringAccess())
+			{
+				monitoring.GET("/admin/kdkmp-dashboard", KdkmpMonitoringHandler)
+				monitoring.GET("/admin/kdkmp-dashboard/:entryID/tasks/:date", KdkmpMonitoringTasksHandler)
 			}
 		}
 

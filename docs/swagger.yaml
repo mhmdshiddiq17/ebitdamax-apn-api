@@ -110,6 +110,11 @@ definitions:
       email:
         type: string
     type: object
+  server.refreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
   server.regionalAssignmentPayload:
     properties:
       kecamatan:
@@ -199,6 +204,8 @@ definitions:
     type: object
   server.twoFactorCodeRequest:
     properties:
+      challenge_token:
+        type: string
       code:
         type: string
     type: object
@@ -264,6 +271,132 @@ info:
   title: EBITDA Max APN API
   version: "1.0"
 paths:
+  /api/v1/admin/kdkmp-dashboard:
+    get:
+      description: Ringkasan pengisian harian, konsolidasi wilayah, dan grafik biaya
+        bulanan KDKMP.
+      parameters:
+      - description: Bulan grafik (YYYY-MM)
+        in: query
+        name: month
+        type: string
+      - description: 'Legacy: tanggal (YYYY-MM-DD)'
+        in: query
+        name: date
+        type: string
+      - description: Tanggal rincian (YYYY-MM-DD)
+        in: query
+        name: detail_date
+        type: string
+      - description: Cari nama/NIK/manager/wilayah
+        in: query
+        name: search
+        type: string
+      - description: Status pengisian (all|complete|not_filled|requires_review)
+        in: query
+        name: status
+        type: string
+      - description: Level konsolidasi (national|province|regency|district|village)
+        in: query
+        name: consolidation_level
+        type: string
+      - description: Filter provinsi
+        in: query
+        name: provinsi
+        type: string
+      - description: Filter kota/kabupaten
+        in: query
+        name: kota_kabupaten
+        type: string
+      - description: Filter kecamatan
+        in: query
+        name: kecamatan
+        type: string
+      - description: Filter desa
+        in: query
+        name: desa
+        type: string
+      - description: Halaman daftar KDKMP
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Monitoring dashboard KDKMP
+      tags:
+      - KDKMP Monitoring
+  /api/v1/admin/kdkmp-dashboard/{entryID}/tasks/{date}:
+    get:
+      description: Daftar laporan task yang diselesaikan manager KDKMP pada tanggal
+        tertentu (foto, dokumen, nilai field).
+      parameters:
+      - description: ID entry KDKMP
+        in: path
+        name: entryID
+        required: true
+        type: integer
+      - description: Tanggal (YYYY-MM-DD)
+        in: path
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Detail task selesai per KDKMP & tanggal
+      tags:
+      - KDKMP Monitoring
   /api/v1/announcements:
     post:
       consumes:
@@ -310,7 +443,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Autentikasi dengan email & kata sandi; membuat session cookie `ebitda_session`.
+      description: 'Autentikasi email & kata sandi. Mengembalikan data user beserta
+        token pair JWT (`access_token`, `refresh_token`) dan menyetel cookie HttpOnly
+        `ebitda_access` + `ebitda_refresh` untuk browser. Bila 2FA aktif: `{two_factor_required:
+        true, challenge_token}` untuk dilanjutkan ke /auth/two-factor-challenge.'
       parameters:
       - description: Kredensial
         in: body
@@ -343,7 +479,15 @@ paths:
       - Auth
   /api/v1/auth/logout:
     post:
-      description: Menghapus session di Redis dan cookie.
+      consumes:
+      - application/json
+      description: Mencabut refresh token (cookie) dan menghapus cookie access + refresh.
+      parameters:
+      - description: Refresh token untuk klien API (opsional bila memakai cookie)
+        in: body
+        name: payload
+        schema:
+          $ref: '#/definitions/server.refreshTokenRequest'
       produces:
       - application/json
       responses:
@@ -354,6 +498,30 @@ paths:
               type: string
             type: object
       summary: Logout
+      tags:
+      - Auth
+  /api/v1/auth/logout-all:
+    post:
+      description: Mencabut seluruh refresh token milik user yang sedang login.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      summary: Logout semua perangkat
       tags:
       - Auth
   /api/v1/auth/me:
@@ -382,7 +550,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Memverifikasi respons assertion dan membuat session login.
+      description: Memverifikasi respons assertion, membuat sesi login, lalu mengembalikan
+        data user + token pair JWT (sekaligus cookie HttpOnly untuk browser).
       produces:
       - application/json
       responses:
@@ -442,14 +611,46 @@ paths:
       summary: Mulai login passkey
       tags:
       - Auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Menukar refresh token (dari cookie atau body `refresh_token`) dengan access token baru.
+        Refresh token lama dirotasi (single-use); pemakaian ulang token lama mencabut seluruh sesi user.
+      parameters:
+      - description: Refresh token untuk klien API (opsional bila memakai cookie)
+        in: body
+        name: payload
+        schema:
+          $ref: '#/definitions/server.refreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Perbarui access token
+      tags:
+      - Auth
   /api/v1/auth/two-factor-challenge:
     post:
       consumes:
       - application/json
       description: Menyelesaikan login yang tertahan 2FA memakai kode TOTP atau recovery
-        code.
+        code. Challenge token dapat dikirim di body (`challenge_token`) atau melalui
+        cookie `ebitda_2fa`. Sukses → data user + token pair JWT + cookie.
       parameters:
-      - description: Kode TOTP atau recovery code
+      - description: Kode TOTP/recovery code + challenge token (opsional bila memakai
+          cookie)
         in: body
         name: payload
         required: true
@@ -3191,8 +3392,13 @@ paths:
 schemes:
 - http
 securityDefinitions:
+  BearerAuth:
+    description: 'Isi dengan: Bearer {access_token}'
+    in: header
+    name: Authorization
+    type: apiKey
   CookieAuth:
     in: cookie
-    name: ebitda_session
+    name: ebitda_access
     type: apiKey
 swagger: "2.0"

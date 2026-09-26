@@ -15,6 +15,196 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/admin/kdkmp-dashboard": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Ringkasan pengisian harian, konsolidasi wilayah, dan grafik biaya bulanan KDKMP.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "KDKMP Monitoring"
+                ],
+                "summary": "Monitoring dashboard KDKMP",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bulan grafik (YYYY-MM)",
+                        "name": "month",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Legacy: tanggal (YYYY-MM-DD)",
+                        "name": "date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Tanggal rincian (YYYY-MM-DD)",
+                        "name": "detail_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Cari nama/NIK/manager/wilayah",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Status pengisian (all|complete|not_filled|requires_review)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Level konsolidasi (national|province|regency|district|village)",
+                        "name": "consolidation_level",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter provinsi",
+                        "name": "provinsi",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter kota/kabupaten",
+                        "name": "kota_kabupaten",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter kecamatan",
+                        "name": "kecamatan",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter desa",
+                        "name": "desa",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Halaman daftar KDKMP",
+                        "name": "page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/kdkmp-dashboard/{entryID}/tasks/{date}": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Daftar laporan task yang diselesaikan manager KDKMP pada tanggal tertentu (foto, dokumen, nilai field).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "KDKMP Monitoring"
+                ],
+                "summary": "Detail task selesai per KDKMP \u0026 tanggal",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID entry KDKMP",
+                        "name": "entryID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Tanggal (YYYY-MM-DD)",
+                        "name": "date",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/announcements": {
             "post": {
                 "security": [
@@ -83,7 +273,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/login": {
             "post": {
-                "description": "Autentikasi dengan email \u0026 kata sandi; membuat session cookie ` + "`" + `ebitda_session` + "`" + `.",
+                "description": "Autentikasi email \u0026 kata sandi. Mengembalikan data user beserta token pair JWT (` + "`" + `access_token` + "`" + `, ` + "`" + `refresh_token` + "`" + `) dan menyetel cookie HttpOnly ` + "`" + `ebitda_access` + "`" + ` + ` + "`" + `ebitda_refresh` + "`" + ` untuk browser. Bila 2FA aktif: ` + "`" + `{two_factor_required: true, challenge_token}` + "`" + ` untuk dilanjutkan ke /auth/two-factor-challenge.",
                 "consumes": [
                     "application/json"
                 ],
@@ -136,7 +326,10 @@ const docTemplate = `{
         },
         "/api/v1/auth/logout": {
             "post": {
-                "description": "Menghapus session di Redis dan cookie.",
+                "description": "Mencabut refresh token (cookie) dan menghapus cookie access + refresh.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -144,9 +337,59 @@ const docTemplate = `{
                     "Auth"
                 ],
                 "summary": "Logout",
+                "parameters": [
+                    {
+                        "description": "Refresh token untuk klien API (opsional bila memakai cookie)",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/server.refreshTokenRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout-all": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mencabut seluruh refresh token milik user yang sedang login.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout semua perangkat",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -194,7 +437,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/passkey/login": {
             "post": {
-                "description": "Memverifikasi respons assertion dan membuat session login.",
+                "description": "Memverifikasi respons assertion, membuat sesi login, lalu mengembalikan data user + token pair JWT (sekaligus cookie HttpOnly untuk browser).",
                 "consumes": [
                     "application/json"
                 ],
@@ -287,9 +530,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/auth/refresh": {
+            "post": {
+                "description": "Menukar refresh token (dari cookie atau body ` + "`" + `refresh_token` + "`" + `) dengan access token baru.\nRefresh token lama dirotasi (single-use); pemakaian ulang token lama mencabut seluruh sesi user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Perbarui access token",
+                "parameters": [
+                    {
+                        "description": "Refresh token untuk klien API (opsional bila memakai cookie)",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/server.refreshTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/two-factor-challenge": {
             "post": {
-                "description": "Menyelesaikan login yang tertahan 2FA memakai kode TOTP atau recovery code.",
+                "description": "Menyelesaikan login yang tertahan 2FA memakai kode TOTP atau recovery code. Challenge token dapat dikirim di body (` + "`" + `challenge_token` + "`" + `) atau melalui cookie ` + "`" + `ebitda_2fa` + "`" + `. Sukses → data user + token pair JWT + cookie.",
                 "consumes": [
                     "application/json"
                 ],
@@ -302,7 +588,7 @@ const docTemplate = `{
                 "summary": "Verifikasi 2FA saat login",
                 "parameters": [
                     {
-                        "description": "Kode TOTP atau recovery code",
+                        "description": "Kode TOTP/recovery code + challenge token (opsional bila memakai cookie)",
                         "name": "payload",
                         "in": "body",
                         "required": true,
@@ -4694,6 +4980,14 @@ const docTemplate = `{
                 }
             }
         },
+        "server.refreshTokenRequest": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
         "server.regionalAssignmentPayload": {
             "type": "object",
             "properties": {
@@ -4831,6 +5125,9 @@ const docTemplate = `{
         "server.twoFactorCodeRequest": {
             "type": "object",
             "properties": {
+                "challenge_token": {
+                    "type": "string"
+                },
                 "code": {
                     "type": "string"
                 }
@@ -4922,9 +5219,15 @@ const docTemplate = `{
         }
     },
     "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Isi dengan: Bearer {access_token}",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        },
         "CookieAuth": {
             "type": "apiKey",
-            "name": "ebitda_session",
+            "name": "ebitda_access",
             "in": "cookie"
         }
     }

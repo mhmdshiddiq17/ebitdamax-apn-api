@@ -2,7 +2,6 @@ package kdkmp
 
 import (
 	"context"
-	"strings"
 
 	"gorm.io/gorm"
 
@@ -16,35 +15,17 @@ func AccessibleKdkmpEntryIDs(ctx context.Context, db *gorm.DB, user *models.User
 		return nil, true, nil
 	}
 
-	conditions := []string{"sdm_kdkmp_entries.id = ?"}
-	args := []any{int64(-1)}
-	if user.SDMKdkmpEntryID != nil {
-		args[0] = *user.SDMKdkmpEntryID
-	}
-
-	var assignments []models.UserRegionalAssignment
-	if err := db.WithContext(ctx).Where("user_id = ?", user.ID).Find(&assignments).Error; err != nil {
+	assignments, err := loadRegionalAssignments(ctx, db, user.ID)
+	if err != nil {
 		return nil, false, err
 	}
 
-	for _, assignment := range assignments {
-		switch assignment.ScopeLevel {
-		case models.RegionalScopeRegency:
-			conditions = append(conditions, "(sdm_kdkmp_entries.provinsi = ? AND sdm_kdkmp_entries.kota_kabupaten = ?)")
-			args = append(args, assignment.Provinsi, deref(assignment.KotaKabupaten))
-		case models.RegionalScopeDistrict:
-			conditions = append(conditions, "(sdm_kdkmp_entries.provinsi = ? AND sdm_kdkmp_entries.kota_kabupaten = ? AND sdm_kdkmp_entries.kecamatan = ?)")
-			args = append(args, assignment.Provinsi, deref(assignment.KotaKabupaten), deref(assignment.Kecamatan))
-		default:
-			conditions = append(conditions, "(sdm_kdkmp_entries.provinsi = ?)")
-			args = append(args, assignment.Provinsi)
-		}
-	}
+	scopeSQL, args := accessibleScopeConditions(user.SDMKdkmpEntryID, assignments)
 
 	var ids []int64
-	err := db.WithContext(ctx).
+	err = db.WithContext(ctx).
 		Model(&models.SdmKdkmpEntry{}).
-		Where(strings.Join(conditions, " OR "), args...).
+		Where("("+scopeSQL+")", args...).
 		Pluck("sdm_kdkmp_entries.id", &ids).Error
 	if err != nil {
 		return nil, false, err

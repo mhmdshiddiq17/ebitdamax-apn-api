@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -19,7 +20,8 @@ type twoFactorEnableRequest struct {
 }
 
 type twoFactorCodeRequest struct {
-	Code string `json:"code"`
+	Code           string `json:"code"`
+	ChallengeToken string `json:"challenge_token"`
 }
 
 type twoFactorPasswordRequest struct {
@@ -208,18 +210,27 @@ func TwoFactorRecoveryCodesHandler(c *gin.Context) {
 // TwoFactorChallengeHandler godoc
 //
 //	@Summary      Verifikasi 2FA saat login
-//	@Description  Menyelesaikan login yang tertahan 2FA memakai kode TOTP atau recovery code.
+//	@Description  Menyelesaikan login yang tertahan 2FA memakai kode TOTP atau recovery code. Challenge token dapat dikirim di body (`challenge_token`) atau melalui cookie `ebitda_2fa`. Sukses → data user + token pair JWT + cookie.
 //	@Tags         Auth
 //	@Accept       json
 //	@Produce      json
-//	@Param        payload  body      twoFactorCodeRequest  true  "Kode TOTP atau recovery code"
+//	@Param        payload  body      twoFactorCodeRequest  true  "Kode TOTP/recovery code + challenge token (opsional bila memakai cookie)"
 //	@Success      200      {object}  map[string]any
 //	@Failure      401      {object}  map[string]string
 //	@Failure      422      {object}  map[string]string
 //	@Router       /api/v1/auth/two-factor-challenge [post]
 func TwoFactorChallengeHandler(c *gin.Context) {
-	token, err := c.Cookie(twoFactorCookie)
-	if err != nil || token == "" {
+	var req twoFactorCodeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "Data tidak valid"})
+		return
+	}
+
+	token := strings.TrimSpace(req.ChallengeToken)
+	if token == "" {
+		token, _ = c.Cookie(twoFactorCookie)
+	}
+	if token == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Sesi verifikasi tidak ditemukan, silakan masuk ulang"})
 		return
 	}
@@ -228,12 +239,6 @@ func TwoFactorChallengeHandler(c *gin.Context) {
 	if err != nil {
 		clearTwoFactorCookie(c)
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Sesi verifikasi sudah berakhir, silakan masuk ulang"})
-		return
-	}
-
-	var req twoFactorCodeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "Data tidak valid"})
 		return
 	}
 
@@ -258,15 +263,18 @@ func TwoFactorChallengeHandler(c *gin.Context) {
 		return
 	}
 
-	if err := replaceSession(c, user.ID); err != nil {
+	accessToken, refreshToken, expiresAt, err := issueTokenPair(c.Request.Context(), user.ID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Gagal membuat sesi"})
 		return
 	}
 
+	applyAuthCookies(c, accessToken, refreshToken)
+
 	_ = AppDeps.TwoFactor.ClearChallenge(c.Request.Context(), token)
 	clearTwoFactorCookie(c)
 
-	c.JSON(http.StatusOK, userResponse(&user))
+	c.JSON(http.StatusOK, authResponseWithTokens(&user, accessToken, refreshToken, expiresAt))
 }
 
 func verifyCurrentPassword(user *models.User, password string) bool {

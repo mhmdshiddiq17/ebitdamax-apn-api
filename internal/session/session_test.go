@@ -10,90 +10,56 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func TestManagerLifecycle(t *testing.T) {
+func TestJSONStateRoundtrip(t *testing.T) {
 	mr := miniredis.RunT(t)
 	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	manager := NewManager(client, time.Hour)
 	ctx := context.Background()
 
-	id, err := manager.Create(ctx, 42)
-	if err != nil {
-		t.Fatalf("create session: %v", err)
-	}
-	if len(id) != 64 {
-		t.Fatalf("expected 64-char session id, got %d chars", len(id))
+	type payload struct {
+		UserID   int64 `json:"user_id"`
+		Attempts int   `json:"attempts"`
 	}
 
-	data, err := manager.Get(ctx, id)
-	if err != nil {
-		t.Fatalf("get session: %v", err)
-	}
-	if data.UserID != 42 {
-		t.Fatalf("expected user id 42, got %d", data.UserID)
+	if err := manager.PutJSON(ctx, "twofactor:challenge:abc", payload{UserID: 7, Attempts: 0}, time.Minute); err != nil {
+		t.Fatalf("put: %v", err)
 	}
 
-	if _, err := manager.Get(ctx, "tidak-ada"); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("expected ErrNotFound for unknown session, got %v", err)
+	var loaded payload
+	if err := manager.GetJSON(ctx, "twofactor:challenge:abc", &loaded); err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if loaded.UserID != 7 {
+		t.Fatalf("payload tidak cocok: %+v", loaded)
 	}
 
-	if err := manager.Touch(ctx, id); err != nil {
-		t.Fatalf("touch session: %v", err)
+	if err := manager.DeleteKey(ctx, "twofactor:challenge:abc"); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if err := manager.GetJSON(ctx, "twofactor:challenge:abc", &loaded); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 
-	if err := manager.Destroy(ctx, id); err != nil {
-		t.Fatalf("destroy session: %v", err)
+	// Kadaluarsa
+	if err := manager.PutJSON(ctx, "twofactor:challenge:exp", payload{UserID: 1}, time.Minute); err != nil {
+		t.Fatalf("put: %v", err)
 	}
-	if _, err := manager.Get(ctx, id); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("expected ErrNotFound after destroy, got %v", err)
-	}
-}
-
-func TestManagerExpiry(t *testing.T) {
-	mr := miniredis.RunT(t)
-	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	manager := NewManager(client, time.Minute)
-	ctx := context.Background()
-
-	id, err := manager.Create(ctx, 7)
-	if err != nil {
-		t.Fatalf("create session: %v", err)
-	}
-
 	mr.FastForward(2 * time.Minute)
-
-	if _, err := manager.Get(ctx, id); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("expected expired session to be not found, got %v", err)
+	if err := manager.GetJSON(ctx, "twofactor:challenge:exp", &loaded); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected state kadaluarsa, got %v", err)
 	}
 }
 
-func TestDestroyUserSessions(t *testing.T) {
-	mr := miniredis.RunT(t)
-	manager := NewManager(redis.NewClient(&redis.Options{Addr: mr.Addr()}), time.Hour)
-	ctx := context.Background()
-
-	first, err := manager.Create(ctx, 7)
+func TestNewToken(t *testing.T) {
+	first, err := NewToken()
 	if err != nil {
-		t.Fatalf("create first session: %v", err)
+		t.Fatalf("new token: %v", err)
 	}
-	second, err := manager.Create(ctx, 7)
+	second, err := NewToken()
 	if err != nil {
-		t.Fatalf("create second session: %v", err)
+		t.Fatalf("new token: %v", err)
 	}
-	other, err := manager.Create(ctx, 8)
-	if err != nil {
-		t.Fatalf("create other session: %v", err)
-	}
-
-	if err := manager.DestroyUserSessions(ctx, 7); err != nil {
-		t.Fatalf("destroy user sessions: %v", err)
-	}
-	if _, err := manager.Get(ctx, first); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("first session: %v", err)
-	}
-	if _, err := manager.Get(ctx, second); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("second session: %v", err)
-	}
-	if _, err := manager.Get(ctx, other); err != nil {
-		t.Fatalf("other user session: %v", err)
+	if len(first) != 64 || first == second {
+		t.Fatalf("token tidak valid: %q vs %q", first, second)
 	}
 }

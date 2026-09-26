@@ -27,7 +27,7 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | Manager KDKMP | Target paritas utama: auth, profil, task, dashboard, perencanaan, dan kolaborasi. |
 | Master data pendukung | Selesai pada Sprint 3 dan dipertahankan hanya untuk mendukung Manager KDKMP. |
 | APN corporate | Di luar scope: organisasi, EBITDA tree/value, kalkulasi, value chain, dan dashboard APN. |
-| Monitoring non-manager | Di luar scope aktif: dashboard regional/superadmin, SDM nasional, import Excel, peta, sarpras, dan portal eksternal. |
+| Monitoring non-manager | Dipindahkan ke scope aktif: Sprint 14 (dashboard monitoring) & Sprint 15 (SDM dari portalkdkmp.id); peta/import Excel APN tetap di luar scope. |
 | Integrasi eksternal | Tidak dikerjakan tanpa kontrak akses/SSO yang siap; dicatat sebagai `blocked`. |
 
 ## Peta Epic
@@ -46,6 +46,9 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | E10 | Customer Insight Manager | S10 | done |
 | E11 | Komunikasi Manager | S11 | done |
 | E12 | POS Revenue Manager | S12 | blocked |
+| E13 | Auth Token (JWT) | S13 | done |
+| E14 | Monitoring Dashboard KDKMP | S14 | done |
+| E15 | Sinkronisasi SDM portalkdkmp.id | S15 | todo |
 
 `*` Epic selesai dengan item hold/skip yang tercatat di bagian status khusus.
 
@@ -180,6 +183,44 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | B-1 | LMS KDKMP iframe untuk manager | P1 | skip (tidak lagi digunakan) |
 | B-2 | Lumbung Chat iframe | P2 | skip (tidak lagi digunakan) |
 | B-3 | SSO Lark | P1 | blocked (akses/API Lark dan parity kolom user belum tersedia) |
+
+## Sprint 13 — Auth Token (JWT)
+
+Keputusan: hybrid cookie (web) + Bearer (API client) · access 1 jam · refresh 7 hari rotating ·
+revoke refresh saja · proxy Next verifikasi penuh · switch langsung tanpa legacy ·
+**tanpa perubahan skema DB**.
+
+| ID | Story | Prioritas | Status |
+|----|-------|-----------|--------|
+| S13-1 | Access token JWT + middleware verifikasi (cookie & Bearer) | P0 | done |
+| S13-2 | Refresh store (rotasi single-use, replay detection, revoke-all O(1)) + `/auth/refresh`/`/auth/logout-all` + auto-refresh middleware | P0 | done |
+| S13-3 | Flow Bearer `/auth/token` (+verify 2FA) + Swagger | P0 | done |
+| S13-4 | Web: proxy verifikasi Edge, retry 401, E2E Playwright, dokumen | P0 | done |
+| S13-5 | **Addendum:** unifikasi login & token (login/challenge/passkey mengembalikan token pair + cookie; `/auth/token*` dihapus) | P0 | done |
+
+## Sprint 14 — Monitoring Dashboard KDKMP (Pohon EBITDA Wilayah)
+
+Keputusan: parity pola lama (breadcrumb + grid kartu drill-down, bukan tree visual) ·
+akses superadmin (nasional) + manager-wilayah (scoped + locked filters) · tanpa perubahan skema.
+
+| ID | Story | Prioritas | Status |
+|----|-------|-----------|--------|
+| S14-1 | Regional access + konsolidasi (RegionOptions, FilterContext/locked filters, ConsolidateEntries per level wilayah) | P0 | done |
+| S14-2 | Bulk metrics + monthly financial matrix (titik harian + kumulatif) | P0 | done |
+| S14-3 | Endpoint `GET /admin/kdkmp-dashboard` + halaman monitoring (breadcrumb, kartu, chart, tabel) | P0 | done |
+| S14-4 | Detail task per KDKMP/tanggal + tombol "Lihat Task" | P0 | done |
+
+## Sprint 15 — Sinkronisasi SDM dari portalkdkmp.id (2 Tahap, Parity)
+
+Keputusan: dua tahap (API → `koperasi_sarpras_status_points` → derive ke `sdm_kdkmp_entries`) ·
+derivasi via CLI manual · halaman `/sdm-data` disertakan (superadmin) · token portal tersedia untuk uji API asli.
+
+| ID | Story | Prioritas | Status |
+|----|-------|-----------|--------|
+| S15-1 | Model sarpras + klien portal + service sync + cron 15 menit + CLI `sync-sarpras` | P0 | todo |
+| S15-2 | CLI `sync-sdm` (derive ke `sdm_kdkmp_entries`, field terlindungi tidak ditimpa) | P0 | todo |
+| S15-3 | Halaman `/sdm-data` (list/search/pagination/summary + edit `jumlah_karyawan`) | P0 | todo |
+| S15-4 | Operasional & dokumentasi (env, CLI, jadwal, E2E) | P1 | todo |
 
 ## Deferred — Setelah Seluruh Sprint Inti
 
