@@ -513,7 +513,7 @@ locked filters per-field) · tanpa perubahan skema DB.
 
 ---
 
-## Sprint 15 — Sinkronisasi SDM dari portalkdkmp.id (BERJALAN)
+## Sprint 15 — Sinkronisasi SDM dari portalkdkmp.id (SELESAI)
 
 **Goal (keputusan):** dua tahap parity — API portal → `koperasi_sarpras_status_points` via cron 15 menit, lalu derive ke `sdm_kdkmp_entries` via CLI manual; `jumlah_karyawan` tetap manual; tanpa perubahan skema.
 
@@ -521,7 +521,7 @@ locked filters per-field) · tanpa perubahan skema DB.
 - [x] **S15-1:** Model sarpras + klien portal + service sync + cron + CLI `sync-sarpras`
 - [x] **S15-2:** CLI `sync-sdm` (derive, field terlindungi tidak ditimpa)
 - [x] **S15-3:** Halaman `/sdm-data` (list/search/pagination/summary + edit `jumlah_karyawan`)
-- [ ] **S15-4:** Operasional & dokumentasi (env, CLI, jadwal, E2E)
+- [x] **S15-4:** Operasional & dokumentasi (env, CLI, jadwal, E2E)
 
 **Catatan teknis S15-1/S15-2:**
 - `internal/models/koperasi_sarpras_status_point.go` + `internal/sarpras/{client,sync,derive,scheduler}.go`; CLI `cmd/sync-sarpras` (`--dry-run`, `--max-pages`, `--page-size`, progres per halaman) & `cmd/sync-sdm` (**default dry-run**, tulis dengan `--apply`).
@@ -539,3 +539,8 @@ locked filters per-field) · tanpa perubahan skema DB.
 - Web: `/sdm-data` (server fetch + react-query) — kartu ringkasan 2, search, tabel 6 kolom, **edit inline parity** (baris 0 otomatis input, baris terisi tombol Edit), toast, paginasi; tipe `src/types/sdm-data.ts`; menu "Data SDM" → ready **hanya untuk superadmin** (manager wilayah tidak melihat menu).
 - E2E: list 6.456 (259 halaman) + ringkasan 0/0; search semua field (NIK, kodim `0701` → 105, wilayah, kosong); update entri hasil derive (id 8464 → 5, `updated_by=1`, ringkasan 1/5); validasi 422 (kosong/negatif/string/float) + 404; manager wilayah & manager KDKMP → 403; UI superadmin (edit inline baris demo → 3 + toast + ringkasan 2/8, search `kalipucang` → 5 baris, paginasi halaman 2/259), manager wilayah (menu tidak tampil, akses langsung → redirect `/dashboard`), dark mode + 360px tanpa overflow; entri uji dikembalikan ke 0 (data bersih).
 - Test: `sdm_data_handlers_test.go` (validasi jumlah karyawan + total pages) — `go test ./...` 13 paket hijau; web `tsc`/lint/build hijau.
+
+**Catatan teknis S15-4:**
+- `docs/S15_SARPRAS_SYNC.md` (baru): runbook operasional — tabel env, pemakaian CLI (`sync-sarpras`/`sync-sdm`) + flag & durasi acuan, aktivasi/penonaktifan cron + advisory lock & log, prosedur rutin (verifikasi SQL, derive, isi `jumlah_karyawan`), tabel troubleshooting (token, retry, HTTP/2, NIK-NULL churn, derive batal, kolom terlindungi), batas & keamanan, serta runbook E2E dengan bukti 27 Sep 2026.
+- `docs/LOCAL_DEMO_DATA.md`: tambah bagian `cmd/clone-legacy-org` (DEV-1) — flag, perilaku, dan batas (password/2FA/SK, riwayat, berkas tidak disalin; saran backup).
+- `.env.example` sudah memuat 4 variabel Sprint 15 (token placeholder kosong); token asli hanya di `.env` lokal.

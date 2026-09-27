@@ -48,7 +48,7 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | E12 | POS Revenue Manager | S12 | blocked |
 | E13 | Auth Token (JWT) | S13 | done |
 | E14 | Monitoring Dashboard KDKMP | S14 | done |
-| E15 | Sinkronisasi SDM portalkdkmp.id | S15 | todo |
+| E15 | Sinkronisasi SDM portalkdkmp.id | S15 | done |
 
 `*` Epic selesai dengan item hold/skip yang tercatat di bagian status khusus.
 
@@ -220,7 +220,7 @@ derivasi via CLI manual · halaman `/sdm-data` disertakan (superadmin) · token 
 | S15-1 | Model sarpras + klien portal + service sync + cron 15 menit + CLI `sync-sarpras` | P0 | done |
 | S15-2 | CLI `sync-sdm` (derive ke `sdm_kdkmp_entries`, field terlindungi tidak ditimpa) | P0 | done |
 | S15-3 | Halaman `/sdm-data` (list/search/pagination/summary + edit `jumlah_karyawan`) | P0 | done |
-| S15-4 | Operasional & dokumentasi (env, CLI, jadwal, E2E) | P1 | todo |
+| S15-4 | Operasional & dokumentasi (env, CLI, jadwal, E2E) | P1 | done |
 
 ## Alat Data Dev
 
@@ -229,6 +229,12 @@ derivasi via CLI manual · halaman `/sdm-data` disertakan (superadmin) · token 
 | DEV-1 | `cmd/clone-legacy-org` — clone incremental & idempotent data organisasi (entry + Manager KDKMP + akun Manager Wilayah demo) dari DB legacy lokal `ebitda` | done |
 
 Catatan: command ini hanya untuk memperkaya data dev (bukan cutover; objek berkas legacy tidak disalin, riwayat harian/laporan tidak ikut). Cutover produksi tetap mengikuti `docs/S9_DATA_MIGRATION.md`.
+
+## Draft — Menunggu Arahan User
+
+| ID | Item | Catatan |
+|----|------|---------|
+| D-1 | Peta Nasional (`/monitoring`) | **Draft.** Konsep TIDAK mengikuti ebitdamax-apn; menunggu penjelasan user sebelum desain/backlog sprint. Belum ada API/halaman; menu sidebar tetap "segera". |
 
 ## Deferred — Setelah Seluruh Sprint Inti
 
