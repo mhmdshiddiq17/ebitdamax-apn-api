@@ -497,3 +497,45 @@ locked filters per-field) · tanpa perubahan skema DB.
 - Web: halaman `/admin/kdkmp-dashboard/[entryID]/tasks/[date]` (server fetch, 404→notFound, 403→redirect) + `src/components/kdkmp-monitoring/task-reports-view.tsx` (tabel + dialog detail: waktu, foto dengan preview/unduh, data laporan termasuk berkas, dokumen); tombol "Lihat Task" di tabel monitoring (disabled tanpa manager; toast "Task belum selesai semua atau belum ada." bila completion < 100; dibuka di tab baru agar state drill-down monitoring tidak hilang — deviasi kecil dari lama yang same-tab)
 - E2E: matriks otorisasi berkas diuji nyata dengan fixture sementara (entry Papua + manager + manager wilayah Papua + laporan berfoto via API): superadmin/JT MW/pemilik → **200 image/jpeg** (160B) + header attachment; Papua MW & manager entry lain → **403**; entry di luar cakupan → 404; tasks endpoint superadmin/JT MW → 200, Papua MW → 404, manager KDKMP → 403 (middleware); UI: halaman detail task render 2 laporan, dialog memuat 2 foto (naturalWidth > 0), 2 nilai field, empty state dokumen; toast guard "Lihat Task" terverifikasi; console bersih. Seluruh fixture E2E dihapus (users/entry/report/MinIO object/attendance record) — DB kembali ke 2 user/1 entry/62 report
 - Test: 5 unit test baru `kdkmp_monitoring_task_handlers_test.go` (payload foto/dokumen/nilai/file, label fase) — `go test ./...` 14 paket hijau; build web hijau; swagger di-regenerate
+
+---
+
+## Persiapan Data Dev (pra-Sprint 15)
+
+**Tujuan:** memperkaya data dev (sebelumnya 2 user/1 entry) agar monitoring/pohon EBITDA realistis, tanpa menyentuh data sprint.
+
+- **Command:** `go run ./cmd/clone-legacy-org [--apply] [--limit N] [--reset-manager-passwords N] [--regional-managers N]` — incremental & idempotent (entry upsert by `nik`, user by `lower(email)`, link via map NIK); source `LEGACY_DB_*` (default `127.0.0.1:5432/ebitda`, salinan lokal data aplikasi lama), target dari `.env` (`ebitdamax_apn`).
+- **Hasil apply:** users 2 → **2018**, entries 1 → **2009** (7 provinsi: Jatim 1018, Jateng 758, Banten 112, Jabar 95, Lampung 20, DKI 6), 7 akun Manager Wilayah + assignment province, demo entry & 62 report lama utuh; 1 manager legacy tanpa entry ikut dibuat tanpa entry.
+- **Kredensial demo:** `manager-wilayah-<provinsi>@agrinas.test` / `password123` (7 akun); 3 manager contoh direset ke `password123` (`kdkmp_babakan_karanglewas@ebitdamax.local`, `kdkmp_banjarsari_ajibarang@ebitdamax.local`, `kdkmp_banteran_wangon@ebitdamax.local`); password manager lain disalin hash legacy (tidak bisa login).
+- **Batas:** riwayat harian/laporan **tidak** ikut (legacy hanya 36 daily/129 report; mayoritas Agustus) → grid/pohon/paginasi/search ramai, chart tetap kosong kecuali demo entry; objek berkas legacy tidak disalin (keputusan S9); cutover produksi tetap `docs/S9_DATA_MIGRATION.md`.
+- **Verifikasi:** idempotensi (dry-run ulang → 0 insert), `go test ./...` hijau, E2E API+UI: superadmin total 2009 (81 halaman, 7 kartu provinsi), MW Jatim scope 1018 + provinsi terkunci, login manager hasil reset berhasil. Backup pra-clone: `tmp/ebitdamax_apn_pre-clone.dump`.
+- **Catatan Sprint 15:** entry hasil clone memakai NIK legacy → sync portalkdkmp.id harus upsert by NIK agar tidak duplikat.
+
+---
+
+## Sprint 15 — Sinkronisasi SDM dari portalkdkmp.id (BERJALAN)
+
+**Goal (keputusan):** dua tahap parity — API portal → `koperasi_sarpras_status_points` via cron 15 menit, lalu derive ke `sdm_kdkmp_entries` via CLI manual; `jumlah_karyawan` tetap manual; tanpa perubahan skema.
+
+**Status per package:**
+- [x] **S15-1:** Model sarpras + klien portal + service sync + cron + CLI `sync-sarpras`
+- [x] **S15-2:** CLI `sync-sdm` (derive, field terlindungi tidak ditimpa)
+- [x] **S15-3:** Halaman `/sdm-data` (list/search/pagination/summary + edit `jumlah_karyawan`)
+- [ ] **S15-4:** Operasional & dokumentasi (env, CLI, jadwal, E2E)
+
+**Catatan teknis S15-1/S15-2:**
+- `internal/models/koperasi_sarpras_status_point.go` + `internal/sarpras/{client,sync,derive,scheduler}.go`; CLI `cmd/sync-sarpras` (`--dry-run`, `--max-pages`, `--page-size`, progres per halaman) & `cmd/sync-sdm` (**default dry-run**, tulis dengan `--apply`).
+- Parity lama: paginasi 500, filter baris tanpa koordinat, upsert `(nik, lat, lng)` update semua kecuali `created_at`, hapus stale `synced_at < runAt`; derive memilih `sarpras_primary_lengkap` unik per NIK (terbaru), batal bila ada nama koperasi kosong, update **hanya** `nama_koperasi, provinsi, nama_kodim, desa, kecamatan, kota_kabupaten, batch, updated_at` (jumlah_karyawan/catatan/created_by/updated_by/created_at terlindungi).
+- **Temuan lapangan (diperbaiki):** portal flaky pada HTTP/2 (`stream INTERNAL_ERROR`) → klien memakai HTTP/1.1 + retry 3x (backoff 2s/4s) untuk error transport/timeout/5xx (4xx tidak diulang); timeout per request 60s. `synced_at` di-truncate ke detik agar stale-delete tidak menghapus baris sync berjalan (`timestamp(0)`).
+- Cron: `robfig/cron/v3`, `SkipIfStillRunning` + advisory lock Postgres (`pg_try_advisory_lock`) pengganti `onOneServer`; aktif hanya bila `SARPRAS_SCHEDULER_ENABLED=true` (dev: **false**) + token tersedia; interval via `SARPRAS_SYNC_INTERVAL` (default `@every 15m`).
+- Env baru: `PORTAL_PEMBANGUNAN_BASE_URL`, `PORTAL_PEMBANGUNAN_SARPRAS_TOKEN` (diisi user, tidak di-commit), `SARPRAS_SCHEDULER_ENABLED`, `SARPRAS_SYNC_INTERVAL`.
+- Model `SdmKdkmpEntry` ditambah kolom `batch`, `nama_kodim`, `created_at`, `updated_at` (sudah ada di skema; tanpa perubahan DB).
+- **E2E portal asli (27 Sep 2026):** parsial 2 halaman → full **36.359 titik / 73 halaman (~3–4 menit)**; sync kedua & ketiga membuktikan idempotensi + stale-delete (duplikat NIK-NULL self-healing, `dup=0`, `distinct_synced_at=1`). Derive: **6.449 sumber unik → 2.002 diperbarui, 4.447 ditambahkan, total SDM 6.456**; marker uji (`jumlah_karyawan=7`, `catatan`) tetap utuh setelah apply; entri demo tidak tersentuh; derive ulang → 0 insert. Scheduler smoke (`@every 10s`, port 4001): job berjalan (9.000 baris ter-upsert) — log ringkasan muncul di akhir siklus, skip overlap senyap.
+- **Catatan:** 4.447 entri hasil derive belum punya manager → belum tampil di monitoring (muncul di `/sdm-data` S15-3); sync portal membuat churn baris NIK-NULL setiap siklus (parity lama, dibersihkan stale-delete).
+- Test: 10 unit test `internal/sarpras` (klien: auth/paginasi/mapping/filter/retry 5xx & transport/tidak retry 4xx; derive: pemilihan terbaru, nama kosong, kolom terlindungi; scheduler: interval invalid) — `go test ./...` 13 paket hijau.
+
+**Catatan teknis S15-3:**
+- API: `internal/server/sdm_data_handlers.go` — `GET /api/v1/sdm-data` (search `nama_koperasi/nik/nama_kodim/kota_kabupaten/kecamatan/provinsi`, urut `nama_koperasi`, 25/halaman, ringkasan `jumlah_kdkmp_ditambahkan` + `total_karyawan`) & `PUT /api/v1/sdm-data/:id` (validasi wajib/integer/≥0 → 422, id tak ada → 404, set `updated_by`); didaftarkan di grup admin (`RequireLevels(superadmin)`) — path mengikuti konvensi admin repo (tanpa prefix `/admin`); model `SdmKdkmpEntry` + kolom `jumlah_karyawan`, `catatan`, `created_by`, `updated_by`; swagger di-regenerate.
+- Web: `/sdm-data` (server fetch + react-query) — kartu ringkasan 2, search, tabel 6 kolom, **edit inline parity** (baris 0 otomatis input, baris terisi tombol Edit), toast, paginasi; tipe `src/types/sdm-data.ts`; menu "Data SDM" → ready **hanya untuk superadmin** (manager wilayah tidak melihat menu).
+- E2E: list 6.456 (259 halaman) + ringkasan 0/0; search semua field (NIK, kodim `0701` → 105, wilayah, kosong); update entri hasil derive (id 8464 → 5, `updated_by=1`, ringkasan 1/5); validasi 422 (kosong/negatif/string/float) + 404; manager wilayah & manager KDKMP → 403; UI superadmin (edit inline baris demo → 3 + toast + ringkasan 2/8, search `kalipucang` → 5 baris, paginasi halaman 2/259), manager wilayah (menu tidak tampil, akses langsung → redirect `/dashboard`), dark mode + 360px tanpa overflow; entri uji dikembalikan ke 0 (data bersih).
+- Test: `sdm_data_handlers_test.go` (validasi jumlah karyawan + total pages) — `go test ./...` 13 paket hijau; web `tsc`/lint/build hijau.

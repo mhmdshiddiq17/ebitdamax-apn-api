@@ -242,6 +242,11 @@ definitions:
       name:
         type: string
     type: object
+  server.updateSdmDataRequest:
+    properties:
+      jumlah_karyawan:
+        type: integer
+    type: object
   server.userPayload:
     properties:
       domain:
@@ -397,6 +402,104 @@ paths:
       summary: Detail task selesai per KDKMP & tanggal
       tags:
       - KDKMP Monitoring
+  /api/v1/admin/sdm-data:
+    get:
+      description: Daftar KDKMP dari data pembangunan beserta jumlah karyawan (superadmin).
+      parameters:
+      - description: Cari nama koperasi, NIK, kodim, atau wilayah
+        in: query
+        name: search
+        type: string
+      - description: Halaman
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Daftar data SDM KDKMP
+      tags:
+      - SDM Data
+  /api/v1/admin/sdm-data/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Memperbarui jumlah karyawan satu data SDM KDKMP (superadmin).
+      parameters:
+      - description: ID data SDM
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Jumlah karyawan
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.updateSdmDataRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Simpan jumlah karyawan KDKMP
+      tags:
+      - SDM Data
   /api/v1/announcements:
     post:
       consumes:

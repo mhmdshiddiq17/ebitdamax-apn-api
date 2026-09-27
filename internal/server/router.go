@@ -182,6 +182,9 @@ func NewRouter(deps Deps) *gin.Engine {
 			admin.GET("/region-options", RegionOptionsHandler)
 			admin.GET("/kdkmp-options", KdkmpOptionsHandler)
 
+			admin.GET("/sdm-data", ListSdmDataHandler)
+			admin.PUT("/sdm-data/:id", UpdateSdmDataHandler)
+
 			admin.GET("/task-categories", ListTaskCategoriesHandler)
 			admin.POST("/task-categories", CreateTaskCategoryHandler)
 			admin.PUT("/task-categories/:id", UpdateTaskCategoryHandler)

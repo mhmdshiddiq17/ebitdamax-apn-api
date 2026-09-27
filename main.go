@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"agrinaspangan/ebitda-api/config"
 	"agrinaspangan/ebitda-api/internal/cache"
 	"agrinaspangan/ebitda-api/internal/crypto"
@@ -12,6 +14,7 @@ import (
 	"agrinaspangan/ebitda-api/internal/kdkmp"
 	"agrinaspangan/ebitda-api/internal/meetingminutes"
 	"agrinaspangan/ebitda-api/internal/passkey"
+	"agrinaspangan/ebitda-api/internal/sarpras"
 	"agrinaspangan/ebitda-api/internal/server"
 	"agrinaspangan/ebitda-api/internal/session"
 	"agrinaspangan/ebitda-api/internal/storage"
@@ -87,11 +90,37 @@ func main() {
 
 	router := server.NewRouter(deps)
 
+	startSarprasScheduler(db)
+
 	port := config.GetEnv("APP_PORT", "4000")
 	log.Printf("api server listening on :%s", port)
 	if err := router.Run(":" + port); err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}
+}
+
+// startSarprasScheduler mengaktifkan sinkronisasi titik sarpras berkala bila
+// SARPRAS_SCHEDULER_ENABLED=true dan token portal tersedia.
+func startSarprasScheduler(db *gorm.DB) {
+	if !config.GetEnvBool("SARPRAS_SCHEDULER_ENABLED", false) {
+		return
+	}
+
+	interval := config.GetEnv("SARPRAS_SYNC_INTERVAL", "@every 15m")
+	token := config.GetEnv("PORTAL_PEMBANGUNAN_SARPRAS_TOKEN", "")
+	if token == "" {
+		log.Print("scheduler sarpras tidak aktif: PORTAL_PEMBANGUNAN_SARPRAS_TOKEN kosong")
+		return
+	}
+
+	baseURL := config.GetEnv("PORTAL_PEMBANGAN_BASE_URL", "https://portalkdkmp.id")
+	service := sarpras.NewSyncService(db, sarpras.NewClient(baseURL, token))
+	if _, err := sarpras.StartScheduler(db, service, interval, log.Default()); err != nil {
+		log.Printf("gagal memulai scheduler sarpras: %v", err)
+		return
+	}
+
+	log.Printf("scheduler sarpras aktif (%s)", interval)
 }
 
 func splitOrigins(raw string) []string {

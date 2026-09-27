@@ -217,10 +217,18 @@ derivasi via CLI manual · halaman `/sdm-data` disertakan (superadmin) · token 
 
 | ID | Story | Prioritas | Status |
 |----|-------|-----------|--------|
-| S15-1 | Model sarpras + klien portal + service sync + cron 15 menit + CLI `sync-sarpras` | P0 | todo |
-| S15-2 | CLI `sync-sdm` (derive ke `sdm_kdkmp_entries`, field terlindungi tidak ditimpa) | P0 | todo |
-| S15-3 | Halaman `/sdm-data` (list/search/pagination/summary + edit `jumlah_karyawan`) | P0 | todo |
+| S15-1 | Model sarpras + klien portal + service sync + cron 15 menit + CLI `sync-sarpras` | P0 | done |
+| S15-2 | CLI `sync-sdm` (derive ke `sdm_kdkmp_entries`, field terlindungi tidak ditimpa) | P0 | done |
+| S15-3 | Halaman `/sdm-data` (list/search/pagination/summary + edit `jumlah_karyawan`) | P0 | done |
 | S15-4 | Operasional & dokumentasi (env, CLI, jadwal, E2E) | P1 | todo |
+
+## Alat Data Dev
+
+| ID | Item | Status |
+|----|------|--------|
+| DEV-1 | `cmd/clone-legacy-org` — clone incremental & idempotent data organisasi (entry + Manager KDKMP + akun Manager Wilayah demo) dari DB legacy lokal `ebitda` | done |
+
+Catatan: command ini hanya untuk memperkaya data dev (bukan cutover; objek berkas legacy tidak disalin, riwayat harian/laporan tidak ikut). Cutover produksi tetap mengikuti `docs/S9_DATA_MIGRATION.md`.
 
 ## Deferred — Setelah Seluruh Sprint Inti
 
