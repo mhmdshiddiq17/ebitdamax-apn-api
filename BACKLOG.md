@@ -14,7 +14,7 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 
 - Status: `todo`, `in_progress`, `review`, `done`, `blocked`, `hold`, `skip`,
   atau `deferred`.
-- **P0** wajib untuk paritas/cutover, **P1** penting, **P2** opsional.
+- **P0** wajib untuk paritas/rehearsal, **P1** penting, **P2** opsional.
 - Baseline database adalah `migrations/00001_initial_schema.sql`. Tidak ada
   perubahan schema pada Sprint 7–9 tanpa persetujuan eksplisit.
 - Setiap item `hold`, `skip`, `blocked`, dan `deferred` menyebutkan alasannya;
@@ -28,7 +28,7 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | Master data pendukung | Selesai pada Sprint 3 dan dipertahankan hanya untuk mendukung Manager KDKMP. |
 | APN corporate | Di luar scope: organisasi, EBITDA tree/value, kalkulasi, value chain, dan dashboard APN. |
 | Monitoring non-manager | Dipindahkan ke scope aktif: Sprint 14 (dashboard monitoring) & Sprint 15 (SDM dari portalkdkmp.id); peta/import Excel APN tetap di luar scope. |
-| Integrasi eksternal | Tidak dikerjakan tanpa kontrak akses/SSO yang siap; dicatat sebagai `blocked`. |
+| Integrasi eksternal | SSO Lark diimplementasikan dengan konfigurasi Custom App baru; integrasi yang belum memiliki kontrak tetap `blocked`. |
 
 ## Peta Epic
 
@@ -42,7 +42,7 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | E5 | Dashboard Harian Manager KDKMP | S5 | done |
 | E7 | Kolaborasi Manager | S7 | done |
 | E8 | Kesiapan Manager | S8 | done |
-| E9 | Paritas & Cutover Manager | S9 | done |
+| E9 | Paritas & Rehearsal Manager | S9 | done |
 | E10 | Customer Insight Manager | S10 | done |
 | E11 | Komunikasi Manager | S11 | done |
 | E12 | POS Revenue Manager | S12 | blocked |
@@ -89,7 +89,7 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | S3-2 | Users KDKMP, regional assignment, dan dokumen SK | P0 | done |
 | S3-3 | Task categories CRUD | P0 | done |
 | S3-4 | Tasks CRUD: multi-role, BMC, biaya, dan field laporan | P0 | done |
-| S3-5 | Rebuild database kosong + E2E | P1 | skip (ditangani saat cutover) |
+| S3-5 | Rebuild database kosong + E2E | P1 | skip (tidak diperlukan) |
 
 ## Sprint 4 — Task Management Manager
 
@@ -129,19 +129,18 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 | S8-3 | Polish mobile, aksesibilitas, empty state, dan error state seluruh alur manager | P1 | done |
 | S8-4 | Verifikasi read-only mapping task/field revenue dan biaya terhadap data produksi | P0 | done |
 
-## Sprint 9 — Paritas & Cutover Manager
+## Sprint 9 — Paritas & Rehearsal Manager
 
 | ID | Story | Prioritas | Status |
 |---|---|---|---|
 | S9-1 | Audit route, halaman, dan gate terhadap fitur Manager KDKMP legacy | P0 | done |
 | S9-2 | Migrasi dan verifikasi data hanya untuk tabel in-scope yang sudah ada | P0 | done |
 | S9-3 | Hardening session, akses, validasi, dan performance pass | P0 | done |
-| S9-4 | Rebuild database, backup, rollback plan, dan cutover | P0 | done (rehearsal lokal; bukan cutover produksi) |
-| S9-5 | Dokumentasi operasional dan monitoring pasca-cutover | P1 | done |
+| S9-4 | Rebuild database, backup, rollback plan, dan rehearsal migrasi lokal | P0 | done |
+| S9-5 | Dokumentasi operasional rehearsal lokal | P1 | done |
 
-> Sprint 9 ditutup untuk scope rehearsal lokal yang disetujui. Cutover
-> produksi tetap memerlukan persetujuan baru dan salin/validasi artefak MinIO
-> legacy.
+> Sprint 9 ditutup untuk scope rehearsal lokal yang disetujui. Tidak ada
+> target deployment atau migrasi produksi pada refactor ini.
 
 ## Sprint 10 — Customer Insight Manager
 
@@ -176,13 +175,13 @@ Repos: API `ebitda-refactor` (Go/Gin) · Web `ebitda-refactor-web` (Next.js 16)
 > Memerlukan kontrak API POS eksternal yang tervalidasi. Input pendapatan
 > manual tidak menjadi pengganti integrasi legacy.
 
-## Blocked — Kontrak Eksternal Belum Tersedia
+## Integrasi Eksternal
 
 | ID | Story | Prioritas | Status |
 |---|---|---|---|
 | B-1 | LMS KDKMP iframe untuk manager | P1 | skip (tidak lagi digunakan) |
 | B-2 | Lumbung Chat iframe | P2 | skip (tidak lagi digunakan) |
-| B-3 | SSO Lark | P1 | blocked (akses/API Lark dan parity kolom user belum tersedia) |
+| B-3 | SSO Lark Manager KDKMP | P1 | implemented; uji live menunggu Custom App dan izin email Lark |
 
 ## Sprint 13 — Auth Token (JWT)
 
@@ -228,13 +227,7 @@ derivasi via CLI manual · halaman `/sdm-data` disertakan (superadmin) · token 
 |----|------|--------|
 | DEV-1 | `cmd/clone-legacy-org` — clone incremental & idempotent data organisasi (entry + Manager KDKMP + akun Manager Wilayah demo) dari DB legacy lokal `ebitda` | done |
 
-Catatan: command ini hanya untuk memperkaya data dev (bukan cutover; objek berkas legacy tidak disalin, riwayat harian/laporan tidak ikut). Cutover produksi tetap mengikuti `docs/S9_DATA_MIGRATION.md`.
-
-## Draft — Menunggu Arahan User
-
-| ID | Item | Catatan |
-|----|------|---------|
-| D-1 | Peta Nasional (`/monitoring`) | **Draft.** Konsep TIDAK mengikuti ebitdamax-apn; menunggu penjelasan user sebelum desain/backlog sprint. Belum ada API/halaman; menu sidebar tetap "segera". |
+Catatan: command ini hanya untuk memperkaya data dev; objek berkas legacy tidak disalin, riwayat harian/laporan tidak ikut, dan tidak mengubah database utama.
 
 ## Deferred — Setelah Seluruh Sprint Inti
 

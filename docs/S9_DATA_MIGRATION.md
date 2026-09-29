@@ -1,4 +1,4 @@
-# Sprint 9 — Migrasi Data Manager KDKMP
+# Sprint 9 — Migrasi Data Manager KDKMP untuk Rehearsal Lokal
 
 Perintah `go run ./cmd/migrate-legacy-kdkmp` membaca database legacy dan
 menghasilkan preflight **tanpa menulis target**. Gunakan kredensial legacy
@@ -19,7 +19,7 @@ email sama hanya boleh merupakan Manager KDKMP; akun atau tabel scope yang
 sudah berisi data tidak ditimpa.
 
 Secret 2FA, passkey, sesi, dan metadata dokumen tidak dibawa. Pengguna perlu
-enroll ulang faktor keamanan setelah cutover.
+enroll ulang faktor keamanan pada hasil rehearsal.
 
 ## Hasil preflight lokal
 
@@ -42,5 +42,5 @@ Mode rehearsal membersihkan metadata file, memilih satu Manager hasil migrasi
 sebagai akun QA lokal, dan tetap menulis semua relasi non-file dalam satu
 transaksi. Runbook lengkap ada pada `docs/S9_REHEARSAL_RUNBOOK.md`.
 
-Cutover produksi tetap membutuhkan salin/validasi seluruh objek MinIO sebelum
-`--apply` normal dapat digunakan. Itu bukan bagian rehearsal ini.
+Artefak MinIO legacy sengaja tidak dicakup; mode `--apply` normal bukan alur
+operasional refactor ini.

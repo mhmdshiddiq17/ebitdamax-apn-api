@@ -419,6 +419,95 @@
                 }
             }
         },
+        "/api/v1/auth/lark/callback": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Selesaikan OAuth Lark di browser",
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/lark/config": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Konfigurasi publik SSO Lark dan state H5 sekali pakai",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/lark/h5": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Selesaikan login otomatis dari klien Lark",
+                "parameters": [
+                    {
+                        "description": "Kode dan state H5",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/server.larkH5Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/lark/redirect": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Mulai OAuth Lark di browser",
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    }
+                }
+            }
+        },
         "/api/v1/auth/login": {
             "post": {
                 "description": "Autentikasi email \u0026 kata sandi. Mengembalikan data user beserta token pair JWT (`access_token`, `refresh_token`) dan menyetel cookie HttpOnly `ebitda_access` + `ebitda_refresh` untuk browser. Bila 2FA aktif: `{two_factor_required: true, challenge_token}` untuk dilanjutkan ke /auth/two-factor-challenge.",
@@ -4784,6 +4873,39 @@
                 }
             }
         },
+        "/api/v1/users/{id}/lark-identity": {
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Lepas koneksi Lark milik user KDKMP",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID user",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users/{id}/manager-sk-document": {
             "get": {
                 "security": [
@@ -5037,6 +5159,21 @@
                     "type": "integer"
                 },
                 "summary": {
+                    "type": "string"
+                }
+            }
+        },
+        "server.larkH5Request": {
+            "type": "object",
+            "required": [
+                "code",
+                "state"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "state": {
                     "type": "string"
                 }
             }

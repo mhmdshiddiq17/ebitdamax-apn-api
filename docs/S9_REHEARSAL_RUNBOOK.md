@@ -1,4 +1,4 @@
-# Sprint 9 — Rehearsal Cutover Lokal
+# Sprint 9 — Rehearsal Migrasi Lokal
 
 Rehearsal ini **bukan** clone penuh `ebitdamax-apn`. Legacy hanya dibaca dan
 database refactor utama tidak disentuh. Target tunggalnya adalah database Docker

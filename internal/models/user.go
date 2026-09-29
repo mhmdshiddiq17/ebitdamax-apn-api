@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-// User merepresentasikan tabel `users` (skema existing, tanpa perubahan).
+// User merepresentasikan tabel `users`.
 // Hanya kolom yang dipakai scope manager yang dipetakan.
 type User struct {
 	ID                     int64      `gorm:"primaryKey" json:"id"`
@@ -10,6 +10,7 @@ type User struct {
 	Name                   string     `json:"name"`
 	Username               *string    `gorm:"column:username" json:"username"`
 	Email                  string     `json:"email"`
+	LarkOpenID             *string    `gorm:"column:lark_open_id" json:"-"`
 	EmailVerifiedAt        *time.Time `gorm:"column:email_verified_at" json:"email_verified_at"`
 	Password               string     `gorm:"column:password" json:"-"`
 	SDMKdkmpEntryID        *int64     `gorm:"column:sdm_kdkmp_entry_id" json:"sdm_kdkmp_entry_id"`

@@ -53,6 +53,16 @@ definitions:
       summary:
         type: string
     type: object
+  server.larkH5Request:
+    properties:
+      code:
+        type: string
+      state:
+        type: string
+    required:
+    - code
+    - state
+    type: object
   server.loginRequest:
     properties:
       email:
@@ -542,6 +552,63 @@ paths:
       summary: Kirim pengumuman kepada seluruh Manager KDKMP
       tags:
       - Announcements
+  /api/v1/auth/lark/callback:
+    get:
+      responses:
+        "302":
+          description: Found
+      summary: Selesaikan OAuth Lark di browser
+      tags:
+      - Auth
+  /api/v1/auth/lark/config:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Konfigurasi publik SSO Lark dan state H5 sekali pakai
+      tags:
+      - Auth
+  /api/v1/auth/lark/h5:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Kode dan state H5
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/server.larkH5Request'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Selesaikan login otomatis dari klien Lark
+      tags:
+      - Auth
+  /api/v1/auth/lark/redirect:
+    get:
+      responses:
+        "302":
+          description: Found
+      summary: Mulai OAuth Lark di browser
+      tags:
+      - Auth
   /api/v1/auth/login:
     post:
       consumes:
@@ -3348,6 +3415,26 @@ paths:
       security:
       - CookieAuth: []
       summary: Ubah user
+      tags:
+      - Users
+  /api/v1/users/{id}/lark-identity:
+    delete:
+      parameters:
+      - description: ID user
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Lepas koneksi Lark milik user KDKMP
       tags:
       - Users
   /api/v1/users/{id}/manager-sk-document:

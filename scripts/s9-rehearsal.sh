@@ -62,6 +62,7 @@ fi
 PGPASSWORD="$postgres_password" createdb -h 127.0.0.1 -p "$postgres_port" -U "$postgres_user" "$rehearsal_db"
 awk 'index($0, "-- +goose Down") { exit } { print }' migrations/00001_initial_schema.sql | postgres -d "$rehearsal_db" -q -v ON_ERROR_STOP=1 >/dev/null
 awk 'index($0, "-- +goose Down") { exit } { print }' migrations/00002_customer_analyses.sql | postgres -d "$rehearsal_db" -q -v ON_ERROR_STOP=1 >/dev/null
+awk 'index($0, "-- +goose Down") { exit } { print }' migrations/00003_lark_sso.sql | postgres -d "$rehearsal_db" -q -v ON_ERROR_STOP=1 >/dev/null
 
 DB_NAME="$rehearsal_db" SEED_MANAGER_ENABLED=false go run ./cmd/seed
 DB_NAME="$rehearsal_db" go run ./cmd/migrate-legacy-kdkmp --apply --rehearsal --without-files

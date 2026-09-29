@@ -842,6 +842,7 @@ func transformUser(user *models.User) gin.H {
 		"created_at":               user.CreatedAt,
 		"updated_at":               user.UpdatedAt,
 		"manager_sk_document":      skDocumentResponse(user),
+		"is_lark_linked":           user.LarkOpenID != nil,
 	}
 
 	if user.Role != nil {

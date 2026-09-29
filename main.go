@@ -12,6 +12,7 @@ import (
 	"agrinaspangan/ebitda-api/internal/crypto"
 	"agrinaspangan/ebitda-api/internal/database"
 	"agrinaspangan/ebitda-api/internal/kdkmp"
+	"agrinaspangan/ebitda-api/internal/lark"
 	"agrinaspangan/ebitda-api/internal/meetingminutes"
 	"agrinaspangan/ebitda-api/internal/passkey"
 	"agrinaspangan/ebitda-api/internal/sarpras"
@@ -67,6 +68,19 @@ func main() {
 
 	minioClient := storage.Connect()
 	files := storage.NewFiles(minioClient, config.GetEnv("MINIO_BUCKET", "ebitdamax"))
+	larkClient, err := lark.NewClient(lark.Config{
+		Enabled:     config.GetEnvBool("LARK_SSO_ENABLED", false),
+		AppID:       config.GetEnv("LARK_APP_ID", ""),
+		AppSecret:   config.GetEnv("LARK_APP_SECRET", ""),
+		BaseURL:     config.GetEnv("LARK_BASE_URL", "https://open.larksuite.com"),
+		AuthURL:     config.GetEnv("LARK_AUTHORIZATION_URL", "https://accounts.larksuite.com/open-apis/authen/v1/authorize"),
+		RedirectURI: config.GetEnv("LARK_REDIRECT_URI", "http://localhost:4000/api/v1/auth/lark/callback"),
+		FrontendURL: config.GetEnv("LARK_FRONTEND_URL", "http://localhost:3000"),
+		Scopes:      config.GetEnv("LARK_SCOPES", "contact:user.email:readonly"),
+	})
+	if err != nil {
+		log.Fatalf("failed to initialize Lark SSO: %v", err)
+	}
 
 	deps := server.Deps{
 		DB:            db,
@@ -82,6 +96,7 @@ func main() {
 		Allocation:    kdkmp.NewAllocationService(db),
 		TaskReports:   taskreport.NewDocumentService(files),
 		Meetings:      meetingminutes.NewService(db, files),
+		Lark:          larkClient,
 		AccessCookie:  accessCookie,
 		RefreshCookie: refreshCookie,
 		SessionSecure: sessionSecure,

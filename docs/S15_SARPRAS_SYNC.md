@@ -107,8 +107,7 @@ SARPRAS_SYNC_INTERVAL=@every 15m
 - Token portal tidak pernah di-commit (`.env.example` hanya placeholder).
 - Halaman `/sdm-data` dan update `jumlah_karyawan` hanya untuk superadmin;
   manager wilayah/manager KDKMP mendapat 403.
-- Objek berkas legacy tidak disalin dan tidak diperlukan alur ini; cutover
-  produksi tetap mengikuti `docs/S9_DATA_MIGRATION.md`.
+- Objek berkas legacy tidak disalin dan tidak diperlukan alur ini.
 - Sinkronisasi penuh menulis ±36 ribu baris; jalankan di luar jam sibuk portal
   bila memungkinkan.
 

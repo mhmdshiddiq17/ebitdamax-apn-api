@@ -30,9 +30,8 @@ tidak dapat masuk ke perhitungan.
 ## Keputusan
 
 Mapping tetap **read-only dan strict** agar hasil tidak mencampur data dari
-task atau field yang berbeda arti. Normalisasi alias task/field lama, jika
-dibutuhkan setelah cutover, dicatat sebagai pekerjaan Sprint 9 dan perlu
-persetujuan perubahan data terlebih dahulu.
+task atau field yang berbeda arti. Normalisasi alias task/field lama tidak
+termasuk scope refactor ini.
 
 ## Query verifikasi ulang
 

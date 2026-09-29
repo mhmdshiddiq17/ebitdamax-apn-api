@@ -154,7 +154,7 @@ Durasi sprint: **2 minggu** · Metode: agile · Target utama:
 - [x] **Pkg 2:** Users KDKMP CRUD + regional assignment + upload/preview SK (MinIO)
 - [x] **Pkg 3:** Task Categories CRUD (backend + halaman web)
 - [x] **Pkg 4:** Tasks CRUD (multi-role, period, BMC, cost JSONB, additional fields)
-- [ ] **Pkg 5:** Verifikasi rebuild DB + E2E — **SKIP** (arahan user; rebuild tetap dicakup saat S9 cutover)
+- [ ] **Pkg 5:** Verifikasi rebuild DB + E2E — **SKIP** (arahan user; tidak diperlukan)
 
 **Catatan teknis Pkg 1:**
 - Endpoint superadmin-only (`RequireLevels(superadmin)`): `GET/POST /roles`, `PUT/DELETE /roles/{id}`; list filter domain (default `kdkmp`), search, sort whitelist (name/level/created_at), paginasi 15
@@ -188,7 +188,7 @@ Durasi sprint: **2 minggu** · Metode: agile · Target utama:
 **Review Sprint 3 (✅ goal tercapai):**
 - Master data lengkap: Roles CRUD, Users KDKMP (+regional assignment + SK via MinIO), Task Categories, Tasks (multi-role/BMC/biaya/field dinamis).
 - Verifikasi: E2E API (~50 skenario) + E2E Playwright UI untuk keempat halaman.
-- Pkg 5 (rebuild DB) di-skip atas arahan user → dicatat sebagai risiko kecil; verifikasi rebuild dicakup saat S9 cutover.
+- Pkg 5 (rebuild DB) di-skip atas arahan user; rehearsal database lokal kemudian tercatat terpisah pada Sprint 9.
 
 **Retro Sprint 3:**
 - 🟢 Keep: pola paket (backend → E2E API → UI → E2E Playwright) konsisten dan menemukan bug dini (created_at NULL, GORM JSONB type, `_configured` bool)
@@ -259,7 +259,7 @@ Durasi sprint: **2 minggu** · Metode: agile · Target utama:
 
 **Retro Sprint 5:**
 - 🟢 Keep: gunakan tabel legacy sebagai kontrak perilaku sehingga tidak perlu mengubah skema beku.
-- 🟡 Improve: sebelum cutover, cocokkan nama task/field revenue dan biaya terhadap data produksi karena formula legacy mengandalkannya.
+- 🟡 Improve: pertahankan pencocokan nama task/field revenue dan biaya kanonis karena formula legacy mengandalkannya.
 
 ---
 
@@ -295,7 +295,7 @@ miliknya melalui tabel meeting yang sudah ada.
 ## Sprint 8 — Kesiapan Manager ✅ (SELESAI)
 
 **Goal:** Tutup kesenjangan UX, navigasi, onboarding, dan validasi data
-operasional Manager KDKMP sebelum cutover.
+operasional Manager KDKMP.
 
 **Penyelesaian:**
 
@@ -319,10 +319,10 @@ tersedia dan tidak menjadi syarat selesai sprint.
 
 ---
 
-## Sprint 9 — Paritas & Cutover Manager ✅ (REHEARSAL LOKAL SELESAI)
+## Sprint 9 — Paritas & Rehearsal Manager ✅ (REHEARSAL LOKAL SELESAI)
 
 **Goal:** Audit paritas alur Manager KDKMP, migrasi data tabel in-scope,
-hardening, backup/rollback, dan cutover.
+hardening, backup/rollback, dan rehearsal database lokal.
 
 **Penyelesaian paket 1–3:**
 
@@ -331,7 +331,7 @@ hardening, backup/rollback, dan cutover.
   level umum kini hanya untuk Manager KDKMP; menu Manager Wilayah diselaraskan.
 - **S9-2:** `cmd/migrate-legacy-kdkmp` menyediakan preflight read-only dan
   apply transaksional yang menolak target scope tidak kosong atau metadata
-  berkas tanpa objek. Hasil dan prosedur cutover ada pada
+  berkas tanpa objek. Hasil dan prosedur rehearsal ada pada
   `docs/S9_DATA_MIGRATION.md`.
 - **S9-3:** Sesi diganti saat login, challenge 2FA, dan login passkey; ganti
   kata sandi mencabut seluruh sesi aktif akun lalu membuat sesi baru. Header
@@ -350,10 +350,9 @@ hardening, backup/rollback, dan cutover.
   `docs/S9_OPERATIONS.md`, dan `docs/S9_REHEARSAL_REPORT.md`.
 
 **Batas penutupan:** Sprint ini selesai sebagai **rehearsal lokal** sesuai
-keputusan scope. Ini bukan clone penuh atau cutover produksi: legacy hanya
+keputusan scope. Ini bukan clone penuh atau deployment produksi: legacy hanya
 dibaca, database refactor utama tidak disentuh, dan objek MinIO legacy tidak
-disalin. Cutover produksi memerlukan persetujuan baru serta salin dan validasi
-artefak MinIO terlebih dahulu.
+disalin.
 
 ---
 
@@ -442,7 +441,7 @@ revoke refresh saja (tanpa denylist access) · proxy Next verifikasi signature+e
 
 **Retro Sprint 13:**
 - 🟢 Keep: deviasi desain didokumentasikan (rotasi hanya di endpoint eksplisit) mencegah false-positive replay pada request paralel; proteksi cookie HttpOnly + proxy verify berlapis
-- 🟡 Improve: `JWT_SECRET` web di-inline saat build Edge — tambahkan ke checklist deployment saat cutover S9
+- 🟡 Improve: `JWT_SECRET` web di-inline saat build Edge — tambahkan ke checklist deployment
 - 🔵 Catatan: access token tidak dapat dicabut sebelum kedaluwarsa (≤1 jam) sesuai keputusan "revoke refresh saja"; denylist `jti` dapat ditambahkan bila nanti dibutuhkan
 
 **Catatan teknis Pkg 5 (Addendum — unifikasi login & token):**
@@ -507,7 +506,7 @@ locked filters per-field) · tanpa perubahan skema DB.
 - **Command:** `go run ./cmd/clone-legacy-org [--apply] [--limit N] [--reset-manager-passwords N] [--regional-managers N]` — incremental & idempotent (entry upsert by `nik`, user by `lower(email)`, link via map NIK); source `LEGACY_DB_*` (default `127.0.0.1:5432/ebitda`, salinan lokal data aplikasi lama), target dari `.env` (`ebitdamax_apn`).
 - **Hasil apply:** users 2 → **2018**, entries 1 → **2009** (7 provinsi: Jatim 1018, Jateng 758, Banten 112, Jabar 95, Lampung 20, DKI 6), 7 akun Manager Wilayah + assignment province, demo entry & 62 report lama utuh; 1 manager legacy tanpa entry ikut dibuat tanpa entry.
 - **Kredensial demo:** `manager-wilayah-<provinsi>@agrinas.test` / `password123` (7 akun); 3 manager contoh direset ke `password123` (`kdkmp_babakan_karanglewas@ebitdamax.local`, `kdkmp_banjarsari_ajibarang@ebitdamax.local`, `kdkmp_banteran_wangon@ebitdamax.local`); password manager lain disalin hash legacy (tidak bisa login).
-- **Batas:** riwayat harian/laporan **tidak** ikut (legacy hanya 36 daily/129 report; mayoritas Agustus) → grid/pohon/paginasi/search ramai, chart tetap kosong kecuali demo entry; objek berkas legacy tidak disalin (keputusan S9); cutover produksi tetap `docs/S9_DATA_MIGRATION.md`.
+- **Batas:** riwayat harian/laporan **tidak** ikut (legacy hanya 36 daily/129 report; mayoritas Agustus) → grid/pohon/paginasi/search ramai, chart tetap kosong kecuali demo entry; objek berkas legacy tidak disalin (keputusan S9).
 - **Verifikasi:** idempotensi (dry-run ulang → 0 insert), `go test ./...` hijau, E2E API+UI: superadmin total 2009 (81 halaman, 7 kartu provinsi), MW Jatim scope 1018 + provinsi terkunci, login manager hasil reset berhasil. Backup pra-clone: `tmp/ebitdamax_apn_pre-clone.dump`.
 - **Catatan Sprint 15:** entry hasil clone memakai NIK legacy → sync portalkdkmp.id harus upsert by NIK agar tidak duplikat.
 
@@ -544,3 +543,11 @@ locked filters per-field) · tanpa perubahan skema DB.
 - `docs/S15_SARPRAS_SYNC.md` (baru): runbook operasional — tabel env, pemakaian CLI (`sync-sarpras`/`sync-sdm`) + flag & durasi acuan, aktivasi/penonaktifan cron + advisory lock & log, prosedur rutin (verifikasi SQL, derive, isi `jumlah_karyawan`), tabel troubleshooting (token, retry, HTTP/2, NIK-NULL churn, derive batal, kolom terlindungi), batas & keamanan, serta runbook E2E dengan bukti 27 Sep 2026.
 - `docs/LOCAL_DEMO_DATA.md`: tambah bagian `cmd/clone-legacy-org` (DEV-1) — flag, perilaku, dan batas (password/2FA/SK, riwayat, berkas tidak disalin; saran backup).
 - `.env.example` sudah memuat 4 variabel Sprint 15 (token placeholder kosong); token asli hanya di `.env` lokal.
+
+---
+
+## Enhancement pasca-sprint — SSO Lark Manager KDKMP
+
+- Browser OAuth dan login otomatis H5 memakai Custom App baru; email dicocokkan tanpa membedakan huruf besar/kecil, lalu `open_id` ditautkan sekali. Hanya role `kdkmp/manager` yang diterima.
+- Login email/kata sandi tetap aktif. SSO Lark menerbitkan sesi aplikasi yang sama dan melewati 2FA lokal. Superadmin dapat melepas tautan Lark pada daftar user.
+- Skema `migrations/00003_lark_sso.sql` dan runbook `docs/LARK_SSO.md` tersedia. Tes Go dan build/lint frontend lulus; uji Lark live menunggu App ID/Secret, izin email, serta URL publik yang didaftarkan di Lark.

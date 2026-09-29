@@ -10,6 +10,7 @@ import (
 
 	"agrinaspangan/ebitda-api/config"
 	"agrinaspangan/ebitda-api/internal/kdkmp"
+	"agrinaspangan/ebitda-api/internal/lark"
 	"agrinaspangan/ebitda-api/internal/meetingminutes"
 	"agrinaspangan/ebitda-api/internal/middleware"
 	"agrinaspangan/ebitda-api/internal/models"
@@ -38,6 +39,7 @@ type Deps struct {
 	Allocation    *kdkmp.AllocationService
 	TaskReports   *taskreport.DocumentService
 	Meetings      *meetingminutes.Service
+	Lark          *lark.Client
 	AccessCookie  string
 	RefreshCookie string
 	SessionSecure bool
@@ -75,6 +77,10 @@ func NewRouter(deps Deps) *gin.Engine {
 		api.POST("/auth/two-factor-challenge", TwoFactorChallengeHandler)
 		api.POST("/auth/passkey/options", BeginPasskeyLoginHandler)
 		api.POST("/auth/passkey/login", FinishPasskeyLoginHandler)
+		api.GET("/auth/lark/config", LarkConfigHandler)
+		api.GET("/auth/lark/redirect", LarkRedirectHandler)
+		api.GET("/auth/lark/callback", LarkCallbackHandler)
+		api.POST("/auth/lark/h5", LarkH5Handler)
 
 		protected := api.Group("")
 		protected.Use(auth.Required())
@@ -177,6 +183,7 @@ func NewRouter(deps Deps) *gin.Engine {
 			admin.POST("/users", CreateUserHandler)
 			admin.PUT("/users/:id", UpdateUserHandler)
 			admin.DELETE("/users/:id", DeleteUserHandler)
+			admin.DELETE("/users/:id/lark-identity", ResetLarkIdentityHandler)
 			admin.POST("/users/:id/manager-sk-document", UploadManagerSKDocumentHandler)
 
 			admin.GET("/region-options", RegionOptionsHandler)
