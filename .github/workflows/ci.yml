@@ -40,12 +40,11 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v7
-
       - name: Build image
         run: |
           IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/ebitdamax2-be
-          docker build \
-            --platform linux/amd64
+          buildah build \
+            --platform linux/amd64 \
             --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }} \
             -t $IMAGE:latest \
             -t $IMAGE:${GITHUB_SHA} \
@@ -55,5 +54,6 @@ jobs:
         if: github.event_name == 'push'
         run: |
           IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/ebitdamax2-be
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          docker push --all-tags $IMAGE
+          echo "${{ secrets.GITHUB_TOKEN }}" | buildah login -u "$GITHUB_ACTOR" --password-stdin ghcr.io
+          buildah push $IMAGE:latest
+          buildah push $IMAGE:${GITHUB_SHA}
