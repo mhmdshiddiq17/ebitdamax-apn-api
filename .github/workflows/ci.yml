@@ -38,7 +38,7 @@ jobs:
   image:
     needs: [vet, test]
     runs-on: ubuntu-latest
-    environment: staging-gke
+    environment: staging
     permissions:
       contents: read
       packages: write
